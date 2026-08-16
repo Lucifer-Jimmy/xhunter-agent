@@ -1,10 +1,14 @@
 """Minimal dependency-free CLI."""
 
 import argparse
+import asyncio
 import json
+import os
 from pathlib import Path
 
 from xhunter.application.config import load_config
+from xhunter.application.models import build_model_provider
+from xhunter.application.run_agent import run_agent
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -14,6 +18,12 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser(
         "doctor", help="validate configuration and show runtime policy"
     )
+    run_parser = subparsers.add_parser(
+        "run-agent", help="run one bounded local Agent task"
+    )
+    run_parser.add_argument("--prompt", required=True)
+    run_parser.add_argument("--capability", action="append", default=[])
+    run_parser.add_argument("--skill", type=Path, action="append", default=[])
     arguments = parser.parse_args(argv)
     config = load_config(arguments.config)
     if arguments.command == "doctor":
@@ -29,6 +39,20 @@ def main(argv: list[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+    if arguments.command == "run-agent":
+        model = build_model_provider(config.model)
+        result = asyncio.run(
+            run_agent(
+                config,
+                model,
+                os.environ,
+                arguments.prompt,
+                tuple(arguments.capability),
+                tuple(arguments.skill),
+            )
+        )
+        print(result)
         return 0
     return 2
 

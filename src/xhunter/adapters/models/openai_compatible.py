@@ -1,7 +1,9 @@
 """OpenAI-compatible chat completion adapter for control-plane model calls."""
 
 import asyncio
+import hashlib
 import json
+import re
 import urllib.error
 import urllib.request
 from collections.abc import Mapping
@@ -104,7 +106,7 @@ class OpenAICompatibleModelProvider:
         self._transport = transport or UrllibJsonTransport()
 
     async def generate(self, request: ModelRequest) -> ModelResponse:
-        payload = _request_payload(self._config.model, request)
+        payload, name_map = _request_payload(self._config.model, request)
         response = await self._transport.post(
             f"{self._config.base_url.rstrip('/')}/chat/completions",
             {
@@ -114,42 +116,59 @@ class OpenAICompatibleModelProvider:
             payload,
             self._config.timeout_seconds,
         )
-        return _response_dto(response)
+        return _response_dto(response, name_map)
 
 
-def _request_payload(model: str, request: ModelRequest) -> dict[str, object]:
+def _request_payload(
+    model: str, request: ModelRequest
+) -> tuple[dict[str, object], dict[str, str]]:
+    name_map: dict[str, str] = {}
+    for spec in request.tools:
+        function_name = _function_name(spec.capability)
+        existing = name_map.get(function_name)
+        if existing is not None and existing != spec.capability:
+            raise ModelProviderError("tool capabilities collide after name encoding")
+        name_map[function_name] = spec.capability
     messages: list[dict[str, object]] = []
     if request.system_prompt:
         messages.append({"role": "system", "content": request.system_prompt})
-    messages.extend(_message_payload(message) for message in request.messages)
+    messages.extend(
+        _message_payload(message, name_map) for message in request.messages
+    )
     payload: dict[str, object] = {"model": model, "messages": messages}
     if request.tools:
-        payload["tools"] = [
-            {
-                "type": "function",
-                "function": {
-                    "name": spec.capability,
-                    "description": spec.description,
-                    "parameters": spec.input_schema,
-                },
-            }
-            for spec in request.tools
-        ]
-    return payload
+        tools: list[dict[str, object]] = []
+        for spec in request.tools:
+            function_name = _function_name(spec.capability)
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "description": spec.description,
+                        "parameters": spec.input_schema,
+                    },
+                }
+            )
+        payload["tools"] = tools
+    return payload, name_map
 
 
-def _message_payload(message: Message) -> dict[str, object]:
+def _message_payload(
+    message: Message, name_map: Mapping[str, str]
+) -> dict[str, object]:
     payload: dict[str, object] = {
         "role": message.role,
         "content": message.content,
     }
     if message.tool_calls:
+        capabilities = {capability: name for name, capability in name_map.items()}
         payload["tool_calls"] = [
             {
                 "id": call.call_id,
                 "type": "function",
                 "function": {
-                    "name": call.capability,
+                    "name": _known_function_name(call.capability, capabilities),
                     "arguments": json.dumps(call.arguments, separators=(",", ":")),
                 },
             }
@@ -160,7 +179,20 @@ def _message_payload(message: Message) -> dict[str, object]:
     return payload
 
 
-def _response_dto(response: dict[str, object]) -> ModelResponse:
+def _known_function_name(
+    capability: str, capabilities: Mapping[str, str]
+) -> str:
+    name = capabilities.get(capability)
+    if name is None:
+        raise ModelProviderError(
+            f"message history references unavailable capability: {capability}"
+        )
+    return name
+
+
+def _response_dto(
+    response: dict[str, object], name_map: Mapping[str, str]
+) -> ModelResponse:
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
         raise ModelProviderError("model response has no valid choice")
@@ -171,7 +203,7 @@ def _response_dto(response: dict[str, object]) -> ModelResponse:
     content = message.get("content")
     if content is not None and not isinstance(content, str):
         raise ModelProviderError("model response content must be a string or null")
-    calls = _tool_calls(message.get("tool_calls", []))
+    calls = _tool_calls(message.get("tool_calls", []), name_map)
     finish_reason = choice.get("finish_reason", "stop")
     if not isinstance(finish_reason, str):
         finish_reason = "unknown"
@@ -183,7 +215,9 @@ def _response_dto(response: dict[str, object]) -> ModelResponse:
     )
 
 
-def _tool_calls(value: object) -> tuple[ToolCall, ...]:
+def _tool_calls(
+    value: object, name_map: Mapping[str, str]
+) -> tuple[ToolCall, ...]:
     if not isinstance(value, list):
         raise ModelProviderError("model tool_calls must be a list")
     calls: list[ToolCall] = []
@@ -198,6 +232,9 @@ def _tool_calls(value: object) -> tuple[ToolCall, ...]:
         arguments = function.get("arguments", "{}")
         if not isinstance(call_id, str) or not isinstance(name, str):
             raise ModelProviderError("model tool call id and name must be strings")
+        capability = name_map.get(name)
+        if capability is None:
+            raise ModelProviderError(f"model called an unknown tool: {name}")
         if not isinstance(arguments, str):
             raise ModelProviderError("model tool arguments must be JSON text")
         try:
@@ -208,7 +245,7 @@ def _tool_calls(value: object) -> tuple[ToolCall, ...]:
             ) from exc
         if not isinstance(parsed, dict):
             raise ModelProviderError("model tool arguments must decode to an object")
-        calls.append(ToolCall(call_id, name, parsed))
+        calls.append(ToolCall(call_id, capability, parsed))
     return tuple(calls)
 
 
@@ -223,3 +260,9 @@ def _usage(value: object) -> Usage:
 
 def _nonnegative_int(value: object) -> int:
     return value if isinstance(value, int) and value >= 0 else 0
+
+
+def _function_name(capability: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_-]", "_", capability)
+    digest = hashlib.sha256(capability.encode()).hexdigest()[:8]
+    return f"xh_{normalized[:51]}_{digest}"

@@ -27,6 +27,21 @@ Validate configuration with:
 uv run xhunter --config examples/xhunter.toml doctor
 ```
 
+Run one local Agent task with an explicit unsafe-local acknowledgement:
+
+```sh
+export XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX=1
+export XHUNTER_MODEL_API_KEY=your-control-plane-model-key
+uv run xhunter --config examples/xhunter.toml run-agent \
+  --prompt "Inspect the authorized target" \
+  --capability network.http \
+  --skill examples/skills/ctf-web-enumeration
+```
+
+`run-agent` is for trusted local development only. Tool calls still pass through
+capability resolution, model/tool budgets, ScopePolicy, evidence capture, and
+the configured Sandbox adapter.
+
 ## Extensions
 
 - Skills are inert repository-owned `skill.toml` and `SKILL.md` directories.

@@ -20,6 +20,19 @@ class FakeJsonTransport:
 
     async def post(self, url, headers, payload, timeout_seconds):
         self.calls.append((url, dict(headers), payload, timeout_seconds))
+        choices = self.response.get("choices")
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            message = choices[0].get("message")
+            if isinstance(message, dict):
+                calls = message.get("tool_calls")
+                tools = payload.get("tools")
+                if isinstance(calls, list) and isinstance(tools, list):
+                    function = calls[0].get("function")
+                    tool = tools[0]
+                    if isinstance(function, dict) and isinstance(tool, dict):
+                        tool_function = tool.get("function")
+                        if isinstance(tool_function, dict):
+                            function["name"] = tool_function["name"]
         return self.response
 
 
@@ -80,7 +93,7 @@ class OpenAICompatibleProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(url, "https://model.example/v1/chat/completions")
         self.assertEqual(headers["Authorization"], "Bearer top-secret")
         self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(function["name"], "network.http")
+        self.assertTrue(function["name"].startswith("xh_network_http_"))
         self.assertEqual(timeout, 45)
         self.assertEqual(response.tool_calls[0].capability, "network.http")
         self.assertEqual(response.tool_calls[0].arguments["url"], "http://target.local")

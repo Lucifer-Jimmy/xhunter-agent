@@ -15,6 +15,7 @@ from xhunter.contracts.model import (
     ToolCall,
     Usage,
 )
+from xhunter.contracts.tool import ToolSpec
 from xhunter.orchestration.dispatcher import ToolDispatcher
 from xhunter.runtime.agent import (
     BudgetedModelProvider,
@@ -54,6 +55,9 @@ class ToolMessageProtocolTests(unittest.IsolatedAsyncioTestCase):
             ModelRequest(
                 mission_id="m1",
                 task_id="t1",
+                tools=(
+                    ToolSpec("code.python", "Run Python", {"type": "object"}),
+                ),
                 messages=(
                     Message("assistant", None, tool_calls=(call,)),
                     Message("tool", "1", tool_call_id="call-1"),
@@ -65,7 +69,11 @@ class ToolMessageProtocolTests(unittest.IsolatedAsyncioTestCase):
         assistant = messages[0]
         tool = messages[1]
         assert isinstance(assistant, dict) and isinstance(tool, dict)
-        self.assertEqual(assistant["tool_calls"][0]["id"], "call-1")
+        self.assertTrue(
+            assistant["tool_calls"][0]["function"]["name"].startswith(
+                "xh_code_python_"
+            )
+        )
         self.assertEqual(tool["tool_call_id"], "call-1")
 
     async def test_react_preserves_assistant_tool_call_in_second_request(self) -> None:
