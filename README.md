@@ -50,4 +50,10 @@ the configured Sandbox adapter.
 - External tools use MCP transports; arbitrary third-party Python code is not
   dynamically imported into the Host process.
 
+`McpServerManager` discovers MCP Tool schemas, maps them to
+`mcp.<server>.<tool>` capabilities, and unregisters them during teardown. The
+current repository includes a Fake transport for contract tests. A real stdio
+transport must run through the Sandbox supervisor; xhunter intentionally does
+not spawn MCP server processes directly on the Host.
+
 See `examples/skills/ctf-web-enumeration/` and `examples/plugin-echo/`.
