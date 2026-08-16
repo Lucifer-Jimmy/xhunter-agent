@@ -1,5 +1,9 @@
 [sandbox]
 provider = "local"
+image = "xhunter/base:latest"
+runtime = "runc"
+network = "xhunter-internal"
+workspace = "/workspace"
 
 [model]
 provider = "deepseek"

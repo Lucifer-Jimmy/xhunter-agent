@@ -70,6 +70,9 @@ class LocalSandbox:
             stderr=_decode(stderr),
         )
 
+    async def close(self) -> None:
+        return None
+
 
 def _decode(content: bytes) -> str:
     return content.decode("utf-8", errors="replace")

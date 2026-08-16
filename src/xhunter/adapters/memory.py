@@ -133,6 +133,9 @@ class FakeSandbox(Sandbox):
         self.requests.append(request)
         return self.result
 
+    async def close(self) -> None:
+        return None
+
 
 class EchoTool:
     capability = "test.echo"

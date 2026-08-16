@@ -63,4 +63,4 @@ async def run_ctf(
             result.failed_tasks,
         )
     finally:
-        runtime.close()
+        await runtime.close()

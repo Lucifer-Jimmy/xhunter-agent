@@ -30,6 +30,11 @@ class ModelConfig:
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     sandbox_provider: str = "local"
+    sandbox_image: str = "xhunter/base:latest"
+    sandbox_runtime: str = "runc"
+    docker_host: str | None = None
+    sandbox_network: str = "xhunter-internal"
+    sandbox_workspace: str = "/workspace"
     allowed_targets: tuple[str, ...] = ()
     blocked_targets: tuple[str, ...] = ()
     budget: BudgetConfig = field(default_factory=BudgetConfig)
@@ -61,6 +66,23 @@ def load_config(
     return AppConfig(
         sandbox_provider=values.get(
             "XHUNTER_SANDBOX_PROVIDER", _string(sandbox, "provider", "local")
+        ),
+        sandbox_image=values.get(
+            "XHUNTER_SANDBOX_IMAGE",
+            _string(sandbox, "image", "xhunter/base:latest"),
+        ),
+        sandbox_runtime=values.get(
+            "XHUNTER_SANDBOX_RUNTIME", _string(sandbox, "runtime", "runc")
+        ),
+        docker_host=values.get("XHUNTER_DOCKER_HOST")
+        or _optional_string(sandbox, "docker_host"),
+        sandbox_network=values.get(
+            "XHUNTER_SANDBOX_NETWORK",
+            _string(sandbox, "network", "xhunter-internal"),
+        ),
+        sandbox_workspace=values.get(
+            "XHUNTER_SANDBOX_WORKSPACE",
+            _string(sandbox, "workspace", "/workspace"),
         ),
         allowed_targets=_environment_list(
             values,
@@ -166,6 +188,13 @@ def _section(document: dict[str, object], name: str) -> dict[str, object]:
 def _string(section: dict[str, object], name: str, default: str) -> str:
     value = section.get(name, default)
     if not isinstance(value, str):
+        raise ValueError(f"configuration value must be a string: {name}")
+    return value
+
+
+def _optional_string(section: dict[str, object], name: str) -> str | None:
+    value = section.get(name)
+    if value is not None and not isinstance(value, str):
         raise ValueError(f"configuration value must be a string: {name}")
     return value
 

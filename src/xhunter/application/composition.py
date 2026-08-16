@@ -22,6 +22,7 @@ from xhunter.contracts.checkpoint import CheckpointStore
 from xhunter.contracts.event_bus import Event
 from xhunter.contracts.model import ModelProvider
 from xhunter.contracts.plugin import PluginContext
+from xhunter.contracts.sandbox import Sandbox
 from xhunter.orchestration.policies import (
     BudgetController,
     BudgetLimits,
@@ -51,11 +52,13 @@ class RuntimeBundle:
     artifacts: ArtifactStore
     events: InProcessEventBus
     disposers: list[Callable[[], None]]
+    sandbox: Sandbox
 
-    def close(self) -> None:
+    async def close(self) -> None:
         for disposer in reversed(self.disposers):
             disposer()
         self.plugins.stop_all()
+        await self.sandbox.close()
 
 
 def build_local_runtime(
@@ -64,7 +67,15 @@ def build_local_runtime(
     environment: Mapping[str, str],
 ) -> RuntimeBundle:
     sandbox = build_mission_sandbox(
-        SandboxConfig(config.sandbox_provider), environment
+        SandboxConfig(
+            provider=config.sandbox_provider,
+            image=config.sandbox_image,
+            runtime=config.sandbox_runtime,
+            docker_host=config.docker_host,
+            network_name=config.sandbox_network,
+            workspace=config.sandbox_workspace,
+        ),
+        environment,
     )
     capabilities = CapabilityRegistry()
     plugins = PluginManager(PluginContext(capabilities.register))
@@ -138,6 +149,7 @@ def build_local_runtime(
         artifacts,
         events,
         disposers,
+        sandbox,
     )
 
 

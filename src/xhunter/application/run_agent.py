@@ -46,4 +46,4 @@ async def run_agent(
     finally:
         for dispose in reversed(skill_disposers):
             dispose()
-        runtime.close()
+        await runtime.close()

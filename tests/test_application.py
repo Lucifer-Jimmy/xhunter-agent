@@ -40,12 +40,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn('"local_sandbox_unsafe": true', output.getvalue())
 
 
-class CompositionTests(unittest.TestCase):
-    def test_local_runtime_fails_closed_without_override(self) -> None:
+class CompositionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_local_runtime_fails_closed_without_override(self) -> None:
         with self.assertRaises(UnsafeLocalSandboxError):
             build_local_runtime(load_config(environment={}), FakeModelProvider([]), {})
 
-    def test_local_runtime_registers_tools_and_disposes_them(self) -> None:
+    async def test_local_runtime_registers_tools_and_disposes_them(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             config = replace(
@@ -60,5 +60,5 @@ class CompositionTests(unittest.TestCase):
                 {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
             )
             self.assertIsNotNone(bundle.capabilities.resolve("network.http"))
-            bundle.close()
+            await bundle.close()
             self.assertIsNone(bundle.capabilities.resolve("network.http"))

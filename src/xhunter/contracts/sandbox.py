@@ -24,3 +24,6 @@ class SandboxResult:
 class Sandbox(Protocol):
     async def execute(self, request: SandboxRequest) -> SandboxResult:
         ...
+
+    async def close(self) -> None:
+        ...
