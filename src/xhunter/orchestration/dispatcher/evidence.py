@@ -27,6 +27,7 @@ class EvidenceCaptureMiddleware:
         raw = result.output if result.ok else (result.error or "")
         redacted = self.redactor.redact(raw)
         persisted = redacted.text
+        result_text = persisted
         if len(persisted.encode()) > self.spill_threshold:
             artifact = await self.artifacts.put(
                 persisted.encode(),
@@ -37,6 +38,7 @@ class EvidenceCaptureMiddleware:
                 },
             )
             persisted = f"artifact:{artifact.artifact_id}"
+            result_text = persisted
 
         evidence = Evidence(
             EvidenceId(str(uuid4())),
@@ -56,10 +58,9 @@ class EvidenceCaptureMiddleware:
                 },
             )
         )
-        sanitized = redacted.text
         return ToolResult(
             ok=result.ok,
-            output=sanitized if result.ok else "",
-            error=sanitized if not result.ok else None,
+            output=result_text if result.ok else "",
+            error=result_text if not result.ok else None,
             rejected=result.rejected,
         )

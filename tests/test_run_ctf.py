@@ -58,3 +58,30 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(result.status, MissionStatus.FAILED)
         self.assertEqual(result.failed_tasks, 1)
+
+    async def test_custom_flag_pattern_is_redacted_from_storage_and_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            config = replace(
+                load_config(environment={}),
+                trace_path=root / "trace.jsonl",
+                artifacts_path=root / "artifacts",
+                checkpoint_path=root / "checkpoints",
+                storage_path=root / "storage",
+            )
+            result = await run_ctf(
+                config,
+                FakeModelProvider([ModelResponse(content="XH{custom_secret}")]),
+                {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
+                CtfChallenge(
+                    "Custom Flag",
+                    "misc",
+                    ("local",),
+                    r"XH\{[^}\r\n]+\}",
+                ),
+            )
+            trace = (root / "trace.jsonl").read_text(encoding="utf-8")
+            evidence = (root / "storage/evidence.json").read_text(encoding="utf-8")
+        self.assertEqual(result.status, MissionStatus.COMPLETED)
+        self.assertNotIn("custom_secret", trace)
+        self.assertNotIn("custom_secret", evidence)

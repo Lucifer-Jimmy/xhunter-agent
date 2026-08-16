@@ -25,6 +25,13 @@ class Redactor:
     ) -> None:
         self._patterns = patterns
 
+    @classmethod
+    def with_patterns(cls, *patterns: str) -> "Redactor":
+        compiled = _DEFAULT_PATTERNS + tuple(
+            re.compile(pattern, re.IGNORECASE) for pattern in patterns
+        )
+        return cls(compiled)
+
     def redact(self, content: str) -> RedactedText:
         references: list[str] = []
 

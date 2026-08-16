@@ -96,8 +96,13 @@ class EvidenceCaptureTests(unittest.IsolatedAsyncioTestCase):
         await dispatcher.dispatch(
             ToolRequest("test.echo", mission_id="m1", task_id="t1")
         )
+        result = await dispatcher.dispatch(
+            ToolRequest("test.echo", mission_id="m1", task_id="t2")
+        )
         persisted = next(iter(evidence.items.values()))
         self.assertTrue(persisted.content.startswith("artifact:"))
+        self.assertTrue(result.output.startswith("artifact:"))
+        self.assertNotIn("x" * 100, result.output)
         self.assertEqual(len(artifacts.items), 1)
 
 

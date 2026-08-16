@@ -75,6 +75,7 @@ def build_local_runtime(
     config: AppConfig,
     model: ModelProvider,
     environment: Mapping[str, str],
+    redactor: Redactor | None = None,
 ) -> RuntimeBundle:
     sandbox = build_mission_sandbox(
         SandboxConfig(
@@ -97,7 +98,7 @@ def build_local_runtime(
     checkpoints = _build_checkpoints(config)
     artifacts = _build_artifacts(config)
     events = InProcessEventBus()
-    redactor = Redactor()
+    redactor = redactor or Redactor()
     tracer = JsonlTracer(config.trace_path, redactor)
 
     async def trace(event: Event) -> None:

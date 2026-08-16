@@ -34,7 +34,8 @@ async def run_ctf(
     challenge: CtfChallenge,
 ) -> CtfRunResult:
     state = CtfDomain().create_initial_state(challenge)
-    runtime = build_local_runtime(config, model, environment)
+    redactor = Redactor.with_patterns(challenge.flag_pattern)
+    runtime = build_local_runtime(config, model, environment, redactor)
     try:
         await runtime.missions.save(state.mission)
         await runtime.tasks.save(state.task)
@@ -53,7 +54,7 @@ async def run_ctf(
             context,
             runtime.agent,
             CtfFlagVerifier(challenge.flag_pattern),
-            Redactor(),
+            redactor,
         )
         result = await service.run(state.mission.id)
         persisted_mission = await runtime.missions.get(state.mission.id)
