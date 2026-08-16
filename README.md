@@ -42,6 +42,19 @@ uv run xhunter --config examples/xhunter.toml run-agent \
 capability resolution, model/tool budgets, ScopePolicy, evidence capture, and
 the configured Sandbox adapter.
 
+Run a complete CTF Mission through the Domain, MissionService, Agent, Verifier,
+Evidence, and Checkpoint layers:
+
+```sh
+uv run xhunter --config examples/xhunter.toml run-ctf \
+  --name "Authorized Web Challenge" \
+  --category web \
+  --target challenge.local
+```
+
+The target must be declared both by the CTF challenge and in the configured
+`policy.allowed_targets`; challenge input never expands the policy whitelist.
+
 ## Extensions
 
 - Skills are inert repository-owned `skill.toml` and `SKILL.md` directories.
