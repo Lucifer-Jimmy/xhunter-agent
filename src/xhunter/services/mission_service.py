@@ -1,5 +1,6 @@
 """Explicit Mission loop; persistence and side effects stay in this service."""
 
+import asyncio
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -29,7 +30,7 @@ from xhunter.kernel.entities import (
 from xhunter.kernel.types import EvidenceId, MissionId
 from xhunter.services.planning_service import PlanningService
 from xhunter.services.redaction import Redactor
-from xhunter.services.task_lease import TaskLeaseManager
+from xhunter.services.task_lease import TaskLeaseManager, run_with_lease_heartbeat
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +127,16 @@ class MissionService:
                 },
             )
             try:
-                result = await self._agent.execute(self._context.build(mission, task))
+                operation = asyncio.create_task(
+                    self._agent.execute(self._context.build(mission, task))
+                )
+                result = await run_with_lease_heartbeat(
+                    operation,
+                    self._leases,
+                    task.id,
+                    self._worker_id,
+                    self._lease_ttl_seconds,
+                )
                 await self._save_agent_evidence(mission, task, result.content)
                 verification = await self._verifier.verify(
                     result,

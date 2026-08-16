@@ -9,7 +9,12 @@ from xhunter.adapters.memory import (
 from xhunter.contracts.event_bus import Event
 from xhunter.kernel.entities import Task, TaskStatus
 from xhunter.kernel.types import MissionId, TaskId
-from xhunter.services import ExpiredTaskRecovery, TaskLeaseManager
+from xhunter.services import (
+    ExpiredTaskRecovery,
+    LeaseLostError,
+    TaskLeaseManager,
+    run_with_lease_heartbeat,
+)
 
 
 class EventFailureSemanticsTests(unittest.IsolatedAsyncioTestCase):
@@ -78,3 +83,51 @@ class TaskLeaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovered, (task.id,))
         self.assertEqual(task.status, TaskStatus.TOOL_OUTCOME_UNKNOWN)
         self.assertEqual(checkpoints.items["task:t1"]["reason"], "lease expired")
+
+    async def test_heartbeat_keeps_long_operation_lease_alive(self) -> None:
+        leases = TaskLeaseManager()
+        task_id = TaskId("t1")
+        await leases.acquire(task_id, "worker", 0.06)
+
+        async def operation() -> object:
+            await asyncio.sleep(0.08)
+            return "done"
+
+        result = await run_with_lease_heartbeat(
+            asyncio.create_task(operation()),
+            leases,
+            task_id,
+            "worker",
+            0.06,
+            interval_seconds=0.01,
+        )
+        self.assertEqual(result, "done")
+        self.assertTrue(await leases.release(task_id, "worker"))
+
+    async def test_lost_lease_cancels_operation(self) -> None:
+        leases = TaskLeaseManager()
+        task_id = TaskId("t1")
+        await leases.acquire(task_id, "worker", 0.03)
+
+        async def operation() -> object:
+            await asyncio.sleep(1)
+            return "unexpected"
+
+        task = asyncio.create_task(operation())
+
+        async def steal_lease() -> None:
+            await asyncio.sleep(0.005)
+            await leases.release(task_id, "worker")
+
+        release_task = asyncio.create_task(steal_lease())
+        with self.assertRaises(LeaseLostError):
+            await run_with_lease_heartbeat(
+                task,
+                leases,
+                task_id,
+                "worker",
+                0.03,
+                interval_seconds=0.01,
+            )
+        await release_task
+        self.assertTrue(task.cancelled())

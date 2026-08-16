@@ -111,3 +111,39 @@ class ExpiredTaskRecovery:
             )
             recovered.append(task.id)
         return tuple(recovered)
+
+
+class LeaseLostError(RuntimeError):
+    pass
+
+
+async def run_with_lease_heartbeat[T](
+    operation: asyncio.Task[T],
+    leases: TaskLeaseManager,
+    task_id: TaskId,
+    owner_id: str,
+    ttl_seconds: float,
+    interval_seconds: float | None = None,
+) -> T:
+    interval = interval_seconds or ttl_seconds / 3
+    if interval <= 0 or interval >= ttl_seconds:
+        raise ValueError("heartbeat interval must be positive and less than ttl")
+
+    async def heartbeat() -> None:
+        while True:
+            await asyncio.sleep(interval)
+            if not await leases.heartbeat(task_id, owner_id, ttl_seconds):
+                operation.cancel()
+                raise LeaseLostError(f"task lease lost: {task_id}")
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    try:
+        done, _pending = await asyncio.wait(
+            {operation, heartbeat_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if heartbeat_task in done:
+            await heartbeat_task
+        return await operation
+    finally:
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)

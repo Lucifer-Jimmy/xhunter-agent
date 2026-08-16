@@ -11,8 +11,10 @@ from xhunter.services.recovery_service import RecoveryDecision, RecoveryService
 from xhunter.services.redaction import RedactedText, Redactor
 from xhunter.services.task_lease import (
     ExpiredTaskRecovery,
+    LeaseLostError,
     TaskLease,
     TaskLeaseManager,
+    run_with_lease_heartbeat,
 )
 
 __all__ = [
@@ -28,6 +30,8 @@ __all__ = [
     "RedactedText",
     "Redactor",
     "ExpiredTaskRecovery",
+    "LeaseLostError",
     "TaskLease",
     "TaskLeaseManager",
+    "run_with_lease_heartbeat",
 ]
