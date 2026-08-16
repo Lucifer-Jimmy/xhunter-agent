@@ -28,6 +28,7 @@ from xhunter.kernel.entities import (
 )
 from xhunter.kernel.types import EvidenceId, MissionId
 from xhunter.services.redaction import Redactor
+from xhunter.services.task_lease import TaskLeaseManager
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +52,9 @@ class MissionService:
         agent: AgentExecutor,
         verifier: Verifier,
         redactor: Redactor | None = None,
+        leases: TaskLeaseManager | None = None,
+        worker_id: str = "mission-service",
+        lease_ttl_seconds: float = 60.0,
     ) -> None:
         self._missions = missions
         self._tasks = tasks
@@ -63,6 +67,9 @@ class MissionService:
         self._agent = agent
         self._verifier = verifier
         self._redactor = redactor or Redactor()
+        self._leases = leases or TaskLeaseManager()
+        self._worker_id = worker_id
+        self._lease_ttl_seconds = lease_ttl_seconds
 
     async def run(
         self, mission_id: MissionId, max_tasks: int = 100
@@ -100,6 +107,11 @@ class MissionService:
             )
             task = scheduled.task
             if task is None:
+                break
+            acquired = await self._leases.acquire(
+                task.id, self._worker_id, self._lease_ttl_seconds
+            )
+            if not acquired:
                 break
 
             task.status = TaskStatus.RUNNING
@@ -156,6 +168,8 @@ class MissionService:
                     )
                 )
                 failed += 1
+            finally:
+                await self._leases.release(task.id, self._worker_id)
 
         remaining = await self._tasks.list_pending(mission_id)
         if failed:

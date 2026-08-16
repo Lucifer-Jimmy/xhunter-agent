@@ -8,6 +8,11 @@ from xhunter.services.context_service import (
 from xhunter.services.mission_service import MissionRunResult, MissionService
 from xhunter.services.recovery_service import RecoveryDecision, RecoveryService
 from xhunter.services.redaction import RedactedText, Redactor
+from xhunter.services.task_lease import (
+    ExpiredTaskRecovery,
+    TaskLease,
+    TaskLeaseManager,
+)
 
 __all__ = [
     "AgentProfile",
@@ -19,4 +24,7 @@ __all__ = [
     "RecoveryService",
     "RedactedText",
     "Redactor",
+    "ExpiredTaskRecovery",
+    "TaskLease",
+    "TaskLeaseManager",
 ]

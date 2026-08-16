@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from xhunter.contracts.artifact import ArtifactRef, ArtifactStore
 from xhunter.contracts.checkpoint import CheckpointStore
-from xhunter.contracts.event_bus import Event, EventHandler
+from xhunter.contracts.event_bus import Event, EventDeliveryFailure, EventHandler
 from xhunter.contracts.model import ModelProvider, ModelRequest, ModelResponse
 from xhunter.contracts.policy import PolicyDecision
 from xhunter.contracts.sandbox import Sandbox, SandboxRequest, SandboxResult
@@ -89,12 +89,21 @@ class MemoryArtifactStore(ArtifactStore):
 class InProcessEventBus:
     def __init__(self) -> None:
         self.handlers: dict[str, list[EventHandler]] = defaultdict(list)
+        self.failures: list[EventDeliveryFailure] = []
 
     async def publish(self, event: Event) -> None:
         for handler in tuple(self.handlers.get(event.name, ())):
             try:
                 await handler(event)
-            except Exception:
+            except Exception as exc:
+                self.failures.append(
+                    EventDeliveryFailure(
+                        event.event_id,
+                        event.name,
+                        getattr(handler, "__qualname__", repr(handler)),
+                        str(exc),
+                    )
+                )
                 continue
 
     def subscribe(self, name: str, handler: EventHandler):
