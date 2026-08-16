@@ -6,6 +6,8 @@ from xhunter.services.context_service import (
     ProfileContextProvider,
 )
 from xhunter.services.mission_service import MissionRunResult, MissionService
+from xhunter.services.recovery_service import RecoveryDecision, RecoveryService
+from xhunter.services.redaction import RedactedText, Redactor
 
 __all__ = [
     "AgentProfile",
@@ -13,4 +15,8 @@ __all__ = [
     "MissionRunResult",
     "MissionService",
     "ProfileContextProvider",
+    "RecoveryDecision",
+    "RecoveryService",
+    "RedactedText",
+    "Redactor",
 ]

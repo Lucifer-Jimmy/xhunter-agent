@@ -27,6 +27,7 @@ from xhunter.kernel.entities import (
     TaskStatus,
 )
 from xhunter.kernel.types import EvidenceId, MissionId
+from xhunter.services.redaction import Redactor
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +50,7 @@ class MissionService:
         context: ContextProvider,
         agent: AgentExecutor,
         verifier: Verifier,
+        redactor: Redactor | None = None,
     ) -> None:
         self._missions = missions
         self._tasks = tasks
@@ -60,6 +62,7 @@ class MissionService:
         self._context = context
         self._agent = agent
         self._verifier = verifier
+        self._redactor = redactor or Redactor()
 
     async def run(
         self, mission_id: MissionId, max_tasks: int = 100
@@ -181,7 +184,7 @@ class MissionService:
             id=EvidenceId(str(uuid4())),
             mission_id=mission.id,
             source=f"agent:{task.id}",
-            content=content,
+            content=self._redactor.redact(content).text,
         )
         await self._evidence.save(evidence)
         await self._events.publish(
