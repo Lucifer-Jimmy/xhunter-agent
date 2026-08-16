@@ -55,6 +55,25 @@ uv run xhunter --config examples/xhunter.toml run-ctf \
 The target must be declared both by the CTF challenge and in the configured
 `policy.allowed_targets`; challenge input never expands the policy whitelist.
 
+Inspect and recover persisted work without starting a model or Sandbox:
+
+```sh
+uv run xhunter --config examples/xhunter.toml status --mission-id <mission-id>
+uv run xhunter --config examples/xhunter.toml recover-task --task-id <task-id> --retry
+```
+
+After explicitly resolving an unknown Tool outcome to `retry`, resume pending
+CTF work with the same flag pattern used by the challenge:
+
+```sh
+uv run xhunter --config examples/xhunter.toml resume-ctf \
+  --mission-id <mission-id> \
+  --flag-pattern 'flag\{[^}]+\}'
+```
+
+Unknown outcomes are never retried automatically because the original Tool may
+already have produced a side effect.
+
 ## Extensions
 
 - Skills are inert repository-owned `skill.toml` and `SKILL.md` directories.

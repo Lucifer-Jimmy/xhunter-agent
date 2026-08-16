@@ -201,3 +201,21 @@ class MissionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             self.checkpoints.items["task:t1"]["error_type"], "CancelledError"
         )
+
+    async def test_existing_unknown_task_prevents_false_mission_completion(
+        self,
+    ) -> None:
+        task = Task(
+            TaskId("unknown"),
+            self.mission.id,
+            "unknown",
+            status=TaskStatus.TOOL_OUTCOME_UNKNOWN,
+        )
+        await self.tasks.save(task)
+        result = await self.service(
+            StaticPlanner(),
+            StaticAgent(AgentExecutionResult("unused", 1)),
+            StaticVerifier(True),
+        ).run(self.mission.id)
+        self.assertEqual(result.completed_tasks, 0)
+        self.assertEqual(self.mission.status, MissionStatus.FAILED)

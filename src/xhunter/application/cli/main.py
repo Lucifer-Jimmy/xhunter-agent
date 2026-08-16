@@ -12,6 +12,7 @@ from xhunter.application.recovery_commands import (
     get_mission_status,
     recover_task,
 )
+from xhunter.application.resume_ctf import resume_ctf
 from xhunter.application.run_agent import run_agent
 from xhunter.application.run_ctf import run_ctf
 from xhunter.domains.ctf import CtfChallenge
@@ -49,6 +50,13 @@ def main(argv: list[str] | None = None) -> int:
     recover_choice = recover_parser.add_mutually_exclusive_group(required=True)
     recover_choice.add_argument("--retry", action="store_true")
     recover_choice.add_argument("--fail", action="store_true")
+    resume_parser = subparsers.add_parser(
+        "resume-ctf", help="resume pending tasks in a persisted CTF Mission"
+    )
+    resume_parser.add_argument("--mission-id", required=True)
+    resume_parser.add_argument(
+        "--flag-pattern", default=r"(?:flag|ctf)\{[^}\r\n]+\}"
+    )
     arguments = parser.parse_args(argv)
     config = load_config(arguments.config)
     if arguments.command == "doctor":
@@ -136,6 +144,29 @@ def main(argv: list[str] | None = None) -> int:
         print(
             json.dumps(
                 {"task_id": task.task_id, "status": task.status.value}, indent=2
+            )
+        )
+        return 0
+    if arguments.command == "resume-ctf":
+        model = build_model_provider(config.model)
+        result = asyncio.run(
+            resume_ctf(
+                config,
+                model,
+                os.environ,
+                arguments.mission_id,
+                arguments.flag_pattern,
+            )
+        )
+        print(
+            json.dumps(
+                {
+                    "mission_id": result.mission_id,
+                    "status": result.status.value,
+                    "completed_tasks": result.completed_tasks,
+                    "failed_tasks": result.failed_tasks,
+                },
+                indent=2,
             )
         )
         return 0

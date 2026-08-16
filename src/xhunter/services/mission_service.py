@@ -172,10 +172,18 @@ class MissionService:
             finally:
                 await self._leases.release(task.id, self._worker_id)
 
-        remaining = await self._tasks.list_pending(mission_id)
-        if failed:
+        all_tasks = await self._tasks.list_for_mission(mission_id)
+        has_failed = any(
+            task.status in {TaskStatus.FAILED, TaskStatus.TOOL_OUTCOME_UNKNOWN}
+            for task in all_tasks
+        )
+        has_incomplete = any(
+            task.status in {TaskStatus.PENDING, TaskStatus.RUNNING}
+            for task in all_tasks
+        )
+        if failed or has_failed:
             mission.status = MissionStatus.FAILED
-        elif remaining:
+        elif has_incomplete:
             mission.status = MissionStatus.RUNNING
         else:
             mission.status = MissionStatus.COMPLETED
