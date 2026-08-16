@@ -7,16 +7,18 @@ from xhunter.contracts.tool import ToolSpec
 
 
 @dataclass(frozen=True, slots=True)
-class Message:
-    role: str
-    content: str
-
-
-@dataclass(frozen=True, slots=True)
 class ToolCall:
     call_id: str
     capability: str
     arguments: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class Message:
+    role: str
+    content: str | None
+    tool_calls: tuple[ToolCall, ...] = ()
+    tool_call_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +30,8 @@ class Usage:
 
 @dataclass(frozen=True, slots=True)
 class ModelRequest:
+    mission_id: str = ""
+    task_id: str = ""
     messages: tuple[Message, ...] = ()
     system_prompt: str = ""
     tools: tuple[ToolSpec, ...] = ()

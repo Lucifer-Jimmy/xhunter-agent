@@ -18,6 +18,8 @@ class ReActAgentExecutor:
         for step in range(1, request.max_steps + 1):
             response = await self._model.generate(
                 ModelRequest(
+                    mission_id=request.mission_id,
+                    task_id=request.task_id,
                     system_prompt=request.system_prompt,
                     messages=tuple(messages),
                     tools=request.tools,
@@ -28,6 +30,9 @@ class ReActAgentExecutor:
                     response.content or "", step, tuple(tool_results)
                 )
 
+            messages.append(
+                Message("assistant", response.content, tool_calls=response.tool_calls)
+            )
             for call in response.tool_calls:
                 result = await self._dispatcher.dispatch(
                     ToolRequest(
@@ -39,7 +44,7 @@ class ReActAgentExecutor:
                 )
                 tool_results.append(result)
                 observation = result.output if result.ok else f"ERROR: {result.error}"
-                messages.append(Message("tool", observation))
+                messages.append(Message("tool", observation, tool_call_id=call.call_id))
 
         return AgentExecutionResult(
             "agent step budget exhausted", request.max_steps, tuple(tool_results)

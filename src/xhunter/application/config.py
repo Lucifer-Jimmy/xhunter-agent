@@ -12,6 +12,10 @@ class BudgetConfig:
     mission_tool_calls: int = 100
     task_tool_calls: int = 30
     wall_clock_seconds: float = 3600.0
+    mission_model_tokens: int = 1_000_000
+    task_model_tokens: int = 200_000
+    mission_model_cost: float = 100.0
+    task_model_cost: float = 20.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +81,26 @@ def load_config(
                 values,
                 "XHUNTER_WALL_CLOCK_SECONDS",
                 _number(budget, "wall_clock_seconds", 3600.0),
+            ),
+            mission_model_tokens=_environment_int(
+                values,
+                "XHUNTER_MISSION_MODEL_TOKENS",
+                _integer(budget, "mission_model_tokens", 1_000_000),
+            ),
+            task_model_tokens=_environment_int(
+                values,
+                "XHUNTER_TASK_MODEL_TOKENS",
+                _integer(budget, "task_model_tokens", 200_000),
+            ),
+            mission_model_cost=_environment_float(
+                values,
+                "XHUNTER_MISSION_MODEL_COST",
+                _number(budget, "mission_model_cost", 100.0),
+            ),
+            task_model_cost=_environment_float(
+                values,
+                "XHUNTER_TASK_MODEL_COST",
+                _number(budget, "task_model_cost", 20.0),
             ),
         ),
         model=ModelConfig(

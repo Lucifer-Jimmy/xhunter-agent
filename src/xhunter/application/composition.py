@@ -25,7 +25,11 @@ from xhunter.orchestration.policies import (
     ScopePolicyConfig,
 )
 from xhunter.plugins.builtin import CoreToolsPlugin
-from xhunter.runtime.agent import ReActAgentExecutor
+from xhunter.runtime.agent import (
+    BudgetedModelProvider,
+    ModelBudgetLimits,
+    ReActAgentExecutor,
+)
 from xhunter.runtime.capability import CapabilityRegistry
 from xhunter.runtime.plugin import PluginManager
 from xhunter.services.redaction import Redactor
@@ -84,6 +88,8 @@ def build_local_runtime(
         "evidence.created",
         "task.completed",
         "task.failed",
+        "model.called",
+        "model.completed",
         )
     ]
 
@@ -106,8 +112,18 @@ def build_local_runtime(
         artifacts,
         redactor,
     )
+    budgeted_model = BudgetedModelProvider(
+        model,
+        ModelBudgetLimits(
+            config.budget.mission_model_tokens,
+            config.budget.task_model_tokens,
+            config.budget.mission_model_cost,
+            config.budget.task_model_cost,
+        ),
+        events,
+    )
     return RuntimeBundle(
-        ReActAgentExecutor(model, dispatcher),
+        ReActAgentExecutor(budgeted_model, dispatcher),
         capabilities,
         plugins,
         missions,

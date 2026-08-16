@@ -118,7 +118,7 @@ class OpenAICompatibleModelProvider:
 
 
 def _request_payload(model: str, request: ModelRequest) -> dict[str, object]:
-    messages: list[dict[str, str]] = []
+    messages: list[dict[str, object]] = []
     if request.system_prompt:
         messages.append({"role": "system", "content": request.system_prompt})
     messages.extend(_message_payload(message) for message in request.messages)
@@ -138,8 +138,26 @@ def _request_payload(model: str, request: ModelRequest) -> dict[str, object]:
     return payload
 
 
-def _message_payload(message: Message) -> dict[str, str]:
-    return {"role": message.role, "content": message.content}
+def _message_payload(message: Message) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "role": message.role,
+        "content": message.content,
+    }
+    if message.tool_calls:
+        payload["tool_calls"] = [
+            {
+                "id": call.call_id,
+                "type": "function",
+                "function": {
+                    "name": call.capability,
+                    "arguments": json.dumps(call.arguments, separators=(",", ":")),
+                },
+            }
+            for call in message.tool_calls
+        ]
+    if message.tool_call_id is not None:
+        payload["tool_call_id"] = message.tool_call_id
+    return payload
 
 
 def _response_dto(response: dict[str, object]) -> ModelResponse:
