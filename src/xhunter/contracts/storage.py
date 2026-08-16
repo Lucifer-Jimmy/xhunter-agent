@@ -24,6 +24,9 @@ class TaskRepository(Protocol):
     async def list_pending(self, mission_id: MissionId) -> list[Task]:
         ...
 
+    async def list_for_mission(self, mission_id: MissionId) -> list[Task]:
+        ...
+
 
 class EvidenceRepository(Protocol):
     async def save(self, evidence: Evidence) -> None:

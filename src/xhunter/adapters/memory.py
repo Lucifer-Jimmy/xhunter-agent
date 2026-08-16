@@ -47,6 +47,9 @@ class MemoryTaskRepository(TaskRepository):
             if task.mission_id == mission_id and task.status == TaskStatus.PENDING
         ]
 
+    async def list_for_mission(self, mission_id: MissionId) -> list[Task]:
+        return [task for task in self.items.values() if task.mission_id == mission_id]
+
 
 class MemoryEvidenceRepository(EvidenceRepository):
     def __init__(self) -> None:

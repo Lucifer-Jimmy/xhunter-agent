@@ -27,6 +27,7 @@ from xhunter.kernel.entities import (
     TaskStatus,
 )
 from xhunter.kernel.types import EvidenceId, MissionId
+from xhunter.services.planning_service import PlanningService
 from xhunter.services.redaction import Redactor
 from xhunter.services.task_lease import TaskLeaseManager
 
@@ -55,6 +56,7 @@ class MissionService:
         leases: TaskLeaseManager | None = None,
         worker_id: str = "mission-service",
         lease_ttl_seconds: float = 60.0,
+        planning_service: PlanningService | None = None,
     ) -> None:
         self._missions = missions
         self._tasks = tasks
@@ -70,6 +72,7 @@ class MissionService:
         self._leases = leases or TaskLeaseManager()
         self._worker_id = worker_id
         self._lease_ttl_seconds = lease_ttl_seconds
+        self._planning_service = planning_service or PlanningService(tasks, events)
 
     async def run(
         self, mission_id: MissionId, max_tasks: int = 100
@@ -97,10 +100,7 @@ class MissionService:
                     pending_tasks=pending,
                 )
             )
-            for task in decision.tasks:
-                if task.mission_id != mission_id:
-                    raise ValueError("planner returned a task for another mission")
-                await self._tasks.save(task)
+            await self._planning_service.apply(mission_id, decision)
             pending = tuple(await self._tasks.list_pending(mission_id))
             scheduled = await self._scheduler.schedule(
                 pending, ResourceState(active_tasks=0, max_concurrency=1)
