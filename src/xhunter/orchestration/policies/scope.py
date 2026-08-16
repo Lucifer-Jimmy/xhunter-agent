@@ -14,7 +14,7 @@ _TARGET_ARGUMENTS = ("url", "target", "host")
 class ScopePolicyConfig:
     allowed_targets: tuple[str, ...]
     blocked_targets: tuple[str, ...] = ()
-    network_capability_prefixes: tuple[str, ...] = ("network.",)
+    network_capability_prefixes: tuple[str, ...] = ("network.", "browser.")
 
 
 class ScopePolicy:
