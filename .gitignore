@@ -41,6 +41,13 @@ logs/
 *.log
 
 .DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.pyright/
 .idea/
 .vscode/
 *.swp
