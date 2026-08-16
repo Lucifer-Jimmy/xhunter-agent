@@ -1,0 +1,4 @@
+id = "ctf.web.enumeration"
+name = "CTF Web Enumeration"
+version = "1.0.0"
+tags = ["ctf", "web"]

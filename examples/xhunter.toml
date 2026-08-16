@@ -1,0 +1,14 @@
+[sandbox]
+provider = "local"
+
+[policy]
+allowed_targets = ["challenge.local", "10.10.0.0/16"]
+blocked_targets = ["platform.local"]
+
+[budget]
+mission_tool_calls = 100
+task_tool_calls = 30
+wall_clock_seconds = 3600
+
+[tracing]
+path = ".xhunter/session.jsonl"
