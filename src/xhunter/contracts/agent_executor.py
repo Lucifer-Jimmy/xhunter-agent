@@ -9,6 +9,8 @@ from xhunter.contracts.tool import ToolResult
 
 @dataclass(frozen=True, slots=True)
 class AgentExecutionRequest:
+    mission_id: str = ""
+    task_id: str = ""
     system_prompt: str = ""
     messages: tuple[Message, ...] = ()
     max_steps: int = 8

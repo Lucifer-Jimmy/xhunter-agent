@@ -29,7 +29,12 @@ class ReActAgentExecutor:
 
             for call in response.tool_calls:
                 result = await self._dispatcher.dispatch(
-                    ToolRequest(capability=call.capability, arguments=call.arguments)
+                    ToolRequest(
+                        capability=call.capability,
+                        arguments=call.arguments,
+                        mission_id=request.mission_id,
+                        task_id=request.task_id,
+                    )
                 )
                 tool_results.append(result)
                 observation = result.output if result.ok else f"ERROR: {result.error}"
