@@ -21,6 +21,7 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
                 trace_path=root / "trace.jsonl",
                 artifacts_path=root / "artifacts",
                 checkpoint_path=root / "checkpoints",
+                storage_path=root / "storage",
             )
             result = await run_ctf(
                 config,
@@ -47,6 +48,7 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
                 trace_path=root / "trace.jsonl",
                 artifacts_path=root / "artifacts",
                 checkpoint_path=root / "checkpoints",
+                storage_path=root / "storage",
             )
             result = await run_ctf(
                 config,

@@ -56,9 +56,12 @@ async def run_ctf(
             Redactor(),
         )
         result = await service.run(state.mission.id)
+        persisted_mission = await runtime.missions.get(state.mission.id)
+        if persisted_mission is None:
+            raise RuntimeError("mission disappeared after execution")
         return CtfRunResult(
             str(state.mission.id),
-            state.mission.status,
+            persisted_mission.status,
             result.completed_tasks,
             result.failed_tasks,
         )

@@ -44,6 +44,8 @@ class AppConfig:
     artifacts_path: Path = Path(".xhunter/artifacts")
     checkpoint_provider: str = "file"
     checkpoint_path: Path = Path(".xhunter/checkpoints")
+    storage_provider: str = "file"
+    storage_path: Path = Path(".xhunter/storage")
 
 
 def load_config(
@@ -63,6 +65,7 @@ def load_config(
     model = _section(document, "model")
     artifacts = _section(document, "artifacts")
     checkpoint = _section(document, "checkpoint")
+    storage = _section(document, "storage")
     return AppConfig(
         sandbox_provider=values.get(
             "XHUNTER_SANDBOX_PROVIDER", _string(sandbox, "provider", "local")
@@ -173,6 +176,15 @@ def load_config(
             values.get(
                 "XHUNTER_CHECKPOINT_PATH",
                 _string(checkpoint, "path", ".xhunter/checkpoints"),
+            )
+        ),
+        storage_provider=values.get(
+            "XHUNTER_STORAGE_PROVIDER", _string(storage, "provider", "file")
+        ),
+        storage_path=Path(
+            values.get(
+                "XHUNTER_STORAGE_PATH",
+                _string(storage, "path", ".xhunter/storage"),
             )
         ),
     )

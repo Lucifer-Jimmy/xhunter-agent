@@ -33,3 +33,7 @@ path = ".xhunter/artifacts"
 [checkpoint]
 provider = "file"
 path = ".xhunter/checkpoints"
+
+[storage]
+provider = "file"
+path = ".xhunter/storage"

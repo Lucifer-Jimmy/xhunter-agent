@@ -13,6 +13,11 @@ from xhunter.adapters.memory import (
     MemoryMissionRepository,
     MemoryTaskRepository,
 )
+from xhunter.adapters.storage import (
+    FileEvidenceRepository,
+    FileMissionRepository,
+    FileTaskRepository,
+)
 from xhunter.adapters.tracing import JsonlTracer
 from xhunter.application.bootstrap import SandboxConfig, build_mission_sandbox
 from xhunter.application.config import AppConfig
@@ -23,6 +28,11 @@ from xhunter.contracts.event_bus import Event
 from xhunter.contracts.model import ModelProvider
 from xhunter.contracts.plugin import PluginContext
 from xhunter.contracts.sandbox import Sandbox
+from xhunter.contracts.storage import (
+    EvidenceRepository,
+    MissionRepository,
+    TaskRepository,
+)
 from xhunter.orchestration.policies import (
     BudgetController,
     BudgetLimits,
@@ -45,9 +55,9 @@ class RuntimeBundle:
     agent: ReActAgentExecutor
     capabilities: CapabilityRegistry
     plugins: PluginManager
-    missions: MemoryMissionRepository
-    tasks: MemoryTaskRepository
-    evidence: MemoryEvidenceRepository
+    missions: MissionRepository
+    tasks: TaskRepository
+    evidence: EvidenceRepository
     checkpoints: CheckpointStore
     artifacts: ArtifactStore
     events: InProcessEventBus
@@ -83,9 +93,7 @@ def build_local_runtime(
     if failure is not None:
         raise RuntimeError(f"core tools failed: {failure.reason}")
 
-    missions = MemoryMissionRepository()
-    tasks = MemoryTaskRepository()
-    evidence = MemoryEvidenceRepository()
+    missions, tasks, evidence = _build_repositories(config)
     checkpoints = _build_checkpoints(config)
     artifacts = _build_artifacts(config)
     events = InProcessEventBus()
@@ -98,14 +106,14 @@ def build_local_runtime(
     disposers = [
         events.subscribe(event_name, trace)
         for event_name in (
-        "tool.called",
-        "tool.completed",
-        "evidence.created",
-        "task.completed",
-        "task.failed",
-        "model.called",
-        "model.completed",
-        "model.failed",
+            "tool.called",
+            "tool.completed",
+            "evidence.created",
+            "task.completed",
+            "task.failed",
+            "model.called",
+            "model.completed",
+            "model.failed",
         )
     ]
 
@@ -167,3 +175,21 @@ def _build_checkpoints(config: AppConfig) -> CheckpointStore:
     if config.checkpoint_provider == "memory":
         return MemoryCheckpointStore()
     raise ValueError(f"unsupported checkpoint provider: {config.checkpoint_provider}")
+
+
+def _build_repositories(
+    config: AppConfig,
+) -> tuple[MissionRepository, TaskRepository, EvidenceRepository]:
+    if config.storage_provider == "file":
+        return (
+            FileMissionRepository(config.storage_path),
+            FileTaskRepository(config.storage_path),
+            FileEvidenceRepository(config.storage_path),
+        )
+    if config.storage_provider == "memory":
+        return (
+            MemoryMissionRepository(),
+            MemoryTaskRepository(),
+            MemoryEvidenceRepository(),
+        )
+    raise ValueError(f"unsupported storage provider: {config.storage_provider}")

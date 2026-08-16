@@ -53,6 +53,7 @@ class CompositionTests(unittest.IsolatedAsyncioTestCase):
                 trace_path=root / "trace.jsonl",
                 artifacts_path=root / "artifacts",
                 checkpoint_path=root / "checkpoints",
+                storage_path=root / "storage",
             )
             bundle = build_local_runtime(
                 config,
