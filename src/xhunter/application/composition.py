@@ -108,6 +108,8 @@ def build_local_runtime(
         for event_name in (
             "tool.called",
             "tool.completed",
+            "tool.rejected",
+            "tool.failed",
             "evidence.created",
             "task.completed",
             "task.failed",

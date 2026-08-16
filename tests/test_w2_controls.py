@@ -20,6 +20,7 @@ from xhunter.orchestration.policies import (
     ScopePolicy,
     ScopePolicyConfig,
 )
+from xhunter.plugins.builtin import HttpTool
 from xhunter.runtime.agent import ReActAgentExecutor
 from xhunter.runtime.capability import CapabilityRegistry
 
@@ -131,10 +132,10 @@ class ScopePolicyTests(unittest.IsolatedAsyncioTestCase):
 
 
 class DefaultMiddlewareChainTests(unittest.IsolatedAsyncioTestCase):
-    async def test_policy_denial_short_circuits_tool_and_audit(self) -> None:
+    async def test_policy_denial_short_circuits_tool_and_is_audited(self) -> None:
         registry = CapabilityRegistry()
         sandbox = FakeSandbox(SandboxResult(0, stdout="unexpected"))
-        registry.register(EchoTool(sandbox))
+        registry.register(HttpTool(sandbox))
         events: list[Event] = []
         bus = InProcessEventBus()
 
@@ -143,6 +144,7 @@ class DefaultMiddlewareChainTests(unittest.IsolatedAsyncioTestCase):
 
         bus.subscribe("tool.called", capture)
         bus.subscribe("tool.completed", capture)
+        bus.subscribe("tool.rejected", capture)
         dispatcher = build_tool_dispatcher(
             registry,
             BudgetController(BudgetLimits(10, 10, 60)),
@@ -159,7 +161,9 @@ class DefaultMiddlewareChainTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(result.rejected)
         self.assertEqual(sandbox.requests, [])
-        self.assertEqual(events, [])
+        self.assertEqual(
+            [event.name for event in events], ["tool.called", "tool.rejected"]
+        )
 
     async def test_agent_propagates_mission_and_task_to_audit_events(self) -> None:
         registry = CapabilityRegistry()

@@ -25,9 +25,9 @@ def build_tool_dispatcher(
     redactor: Redactor | None = None,
 ) -> ToolDispatcher:
     middleware = [
+        AuditMiddleware(event_bus),
         budget.middleware,
         PolicyMiddleware(policy),
-        AuditMiddleware(event_bus),
     ]
     if (evidence is None) != (artifacts is None):
         raise ValueError("evidence and artifacts must be configured together")

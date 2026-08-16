@@ -37,16 +37,30 @@ class AuditMiddleware:
                 },
             )
         )
-        result = await call_next(request)
+        try:
+            result = await call_next(request)
+        except Exception as exc:
+            await self.event_bus.publish(
+                Event(
+                    "tool.failed",
+                    {
+                        "mission_id": request.mission_id,
+                        "task_id": request.task_id,
+                        "capability": request.capability,
+                        "error_type": type(exc).__name__,
+                    },
+                )
+            )
+            raise
+        event_name = "tool.rejected" if result.rejected else "tool.completed"
         await self.event_bus.publish(
             Event(
-                "tool.completed",
+                event_name,
                 {
                     "mission_id": request.mission_id,
                     "task_id": request.task_id,
                     "capability": request.capability,
                     "ok": result.ok,
-                    "rejected": result.rejected,
                 },
             )
         )
