@@ -16,6 +16,7 @@ env/
 .ruff_cache/
 .mypy_cache/
 .pyright/
+.xhunter/
 .tox/
 .nox/
 .coverage
@@ -32,7 +33,7 @@ secrets.toml
 secrets.yaml
 
 # ArtifactStore 本地内容寻址存储
-artifacts/
+/artifacts/
 # Sandbox / Mission 工作区
 workspaces/
 # 本地 JSONL Tracer 与事件溯源会话日志

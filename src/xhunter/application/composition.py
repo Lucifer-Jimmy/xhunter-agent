@@ -3,6 +3,8 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from xhunter.adapters.artifacts import LocalArtifactStore
+from xhunter.adapters.checkpoint import FileCheckpointStore
 from xhunter.adapters.memory import (
     InProcessEventBus,
     MemoryArtifactStore,
@@ -15,6 +17,8 @@ from xhunter.adapters.tracing import JsonlTracer
 from xhunter.application.bootstrap import SandboxConfig, build_mission_sandbox
 from xhunter.application.config import AppConfig
 from xhunter.application.tool_runtime import build_tool_dispatcher
+from xhunter.contracts.artifact import ArtifactStore
+from xhunter.contracts.checkpoint import CheckpointStore
 from xhunter.contracts.event_bus import Event
 from xhunter.contracts.model import ModelProvider
 from xhunter.contracts.plugin import PluginContext
@@ -43,8 +47,8 @@ class RuntimeBundle:
     missions: MemoryMissionRepository
     tasks: MemoryTaskRepository
     evidence: MemoryEvidenceRepository
-    checkpoints: MemoryCheckpointStore
-    artifacts: MemoryArtifactStore
+    checkpoints: CheckpointStore
+    artifacts: ArtifactStore
     events: InProcessEventBus
     disposers: list[Callable[[], None]]
 
@@ -71,8 +75,8 @@ def build_local_runtime(
     missions = MemoryMissionRepository()
     tasks = MemoryTaskRepository()
     evidence = MemoryEvidenceRepository()
-    checkpoints = MemoryCheckpointStore()
-    artifacts = MemoryArtifactStore()
+    checkpoints = _build_checkpoints(config)
+    artifacts = _build_artifacts(config)
     events = InProcessEventBus()
     redactor = Redactor()
     tracer = JsonlTracer(config.trace_path, redactor)
@@ -134,3 +138,19 @@ def build_local_runtime(
         events,
         disposers,
     )
+
+
+def _build_artifacts(config: AppConfig) -> ArtifactStore:
+    if config.artifacts_provider == "local":
+        return LocalArtifactStore(config.artifacts_path)
+    if config.artifacts_provider == "memory":
+        return MemoryArtifactStore()
+    raise ValueError(f"unsupported artifacts provider: {config.artifacts_provider}")
+
+
+def _build_checkpoints(config: AppConfig) -> CheckpointStore:
+    if config.checkpoint_provider == "file":
+        return FileCheckpointStore(config.checkpoint_path)
+    if config.checkpoint_provider == "memory":
+        return MemoryCheckpointStore()
+    raise ValueError(f"unsupported checkpoint provider: {config.checkpoint_provider}")

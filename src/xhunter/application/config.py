@@ -35,6 +35,10 @@ class AppConfig:
     budget: BudgetConfig = field(default_factory=BudgetConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     trace_path: Path = Path(".xhunter/session.jsonl")
+    artifacts_provider: str = "local"
+    artifacts_path: Path = Path(".xhunter/artifacts")
+    checkpoint_provider: str = "file"
+    checkpoint_path: Path = Path(".xhunter/checkpoints")
 
 
 def load_config(
@@ -52,6 +56,8 @@ def load_config(
     budget = _section(document, "budget")
     tracing = _section(document, "tracing")
     model = _section(document, "model")
+    artifacts = _section(document, "artifacts")
+    checkpoint = _section(document, "checkpoint")
     return AppConfig(
         sandbox_provider=values.get(
             "XHUNTER_SANDBOX_PROVIDER", _string(sandbox, "provider", "local")
@@ -125,6 +131,26 @@ def load_config(
             values.get(
                 "XHUNTER_TRACE_PATH",
                 _string(tracing, "path", ".xhunter/session.jsonl"),
+            )
+        ),
+        artifacts_provider=values.get(
+            "XHUNTER_ARTIFACTS_PROVIDER",
+            _string(artifacts, "provider", "local"),
+        ),
+        artifacts_path=Path(
+            values.get(
+                "XHUNTER_ARTIFACTS_PATH",
+                _string(artifacts, "path", ".xhunter/artifacts"),
+            )
+        ),
+        checkpoint_provider=values.get(
+            "XHUNTER_CHECKPOINT_PROVIDER",
+            _string(checkpoint, "provider", "file"),
+        ),
+        checkpoint_path=Path(
+            values.get(
+                "XHUNTER_CHECKPOINT_PATH",
+                _string(checkpoint, "path", ".xhunter/checkpoints"),
             )
         ),
     )

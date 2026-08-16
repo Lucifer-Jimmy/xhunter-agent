@@ -21,3 +21,11 @@ task_model_cost = 20.0
 
 [tracing]
 path = ".xhunter/session.jsonl"
+
+[artifacts]
+provider = "local"
+path = ".xhunter/artifacts"
+
+[checkpoint]
+provider = "file"
+path = ".xhunter/checkpoints"

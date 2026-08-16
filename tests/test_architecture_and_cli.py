@@ -1,5 +1,7 @@
 import importlib
+import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from xhunter.adapters.memory import FakeModelProvider
@@ -10,14 +12,22 @@ from xhunter.contracts.model import ModelResponse
 
 class LocalAgentCommandTests(unittest.IsolatedAsyncioTestCase):
     async def test_run_agent_injects_skill_and_returns_model_answer(self) -> None:
-        result = await run_agent(
-            load_config(environment={}),
-            FakeModelProvider([ModelResponse(content="answer")]),
-            {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
-            "inspect the target",
-            (),
-            (Path("examples/skills/ctf-web-enumeration"),),
-        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            config = replace(
+                load_config(environment={}),
+                trace_path=root / "trace.jsonl",
+                artifacts_path=root / "artifacts",
+                checkpoint_path=root / "checkpoints",
+            )
+            result = await run_agent(
+                config,
+                FakeModelProvider([ModelResponse(content="answer")]),
+                {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
+                "inspect the target",
+                (),
+                (Path("examples/skills/ctf-web-enumeration"),),
+            )
         self.assertEqual(result, "answer")
 
     async def test_run_agent_requires_explicit_local_override(self) -> None:

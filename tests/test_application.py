@@ -2,6 +2,7 @@ import contextlib
 import io
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from xhunter.adapters.memory import FakeModelProvider
@@ -45,12 +46,19 @@ class CompositionTests(unittest.TestCase):
             build_local_runtime(load_config(environment={}), FakeModelProvider([]), {})
 
     def test_local_runtime_registers_tools_and_disposes_them(self) -> None:
-        config = load_config(environment={})
-        bundle = build_local_runtime(
-            config,
-            FakeModelProvider([]),
-            {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
-        )
-        self.assertIsNotNone(bundle.capabilities.resolve("network.http"))
-        bundle.close()
-        self.assertIsNone(bundle.capabilities.resolve("network.http"))
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            config = replace(
+                load_config(environment={}),
+                trace_path=root / "trace.jsonl",
+                artifacts_path=root / "artifacts",
+                checkpoint_path=root / "checkpoints",
+            )
+            bundle = build_local_runtime(
+                config,
+                FakeModelProvider([]),
+                {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
+            )
+            self.assertIsNotNone(bundle.capabilities.resolve("network.http"))
+            bundle.close()
+            self.assertIsNone(bundle.capabilities.resolve("network.http"))
