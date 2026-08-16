@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from xhunter.adapters.memory import (
@@ -62,6 +63,17 @@ class StaticAgent:
 class FailingAgent:
     async def execute(self, _request):
         raise RuntimeError("worker disconnected")
+
+
+class SensitiveFailingAgent:
+    async def execute(self, _request):
+        raise RuntimeError("flag{checkpoint_secret}")
+
+
+class BlockingAgent:
+    async def execute(self, _request):
+        await asyncio.sleep(60)
+        return AgentExecutionResult("unexpected", 1)
 
 
 class StaticVerifier:
@@ -140,6 +152,17 @@ class MissionServiceTests(unittest.IsolatedAsyncioTestCase):
             "task.recovery_required", [event.name for event in self.events.events]
         )
 
+    async def test_checkpoint_records_exception_type_without_sensitive_detail(
+        self,
+    ) -> None:
+        task = Task(TaskId("t1"), self.mission.id, "test")
+        await self.service(
+            StaticPlanner((task,)), SensitiveFailingAgent(), StaticVerifier(True)
+        ).run(self.mission.id)
+        checkpoint = self.checkpoints.items["task:t1"]
+        self.assertEqual(checkpoint["error_type"], "RuntimeError")
+        self.assertNotIn("checkpoint_secret", repr(checkpoint))
+
     async def test_rejects_planner_task_for_another_mission(self) -> None:
         foreign = Task(TaskId("foreign"), MissionId("m2"), "invalid")
         with self.assertRaises(ValueError):
@@ -161,3 +184,20 @@ class MissionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.completed_tasks, 1)
         self.assertEqual(self.mission.status, MissionStatus.RUNNING)
         self.assertEqual(second.status, TaskStatus.PENDING)
+
+    async def test_external_cancellation_marks_task_unknown_and_rethrows(self) -> None:
+        task = Task(TaskId("t1"), self.mission.id, "blocking")
+        operation = asyncio.create_task(
+            self.service(
+                StaticPlanner((task,)), BlockingAgent(), StaticVerifier(True)
+            ).run(self.mission.id)
+        )
+        while task.status != TaskStatus.RUNNING:
+            await asyncio.sleep(0)
+        operation.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await operation
+        self.assertEqual(task.status, TaskStatus.TOOL_OUTCOME_UNKNOWN)
+        self.assertEqual(
+            self.checkpoints.items["task:t1"]["error_type"], "CancelledError"
+        )

@@ -1,6 +1,6 @@
 """Waterfall tool middleware with a sandbox-only terminal executor."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 
 from xhunter.contracts.tool import Tool, ToolMiddleware, ToolRequest, ToolResult
 
@@ -12,13 +12,17 @@ class ToolDispatcher:
         self,
         tools: Mapping[str, Tool] | ToolResolver,
         middleware: Sequence[ToolMiddleware] = (),
+        unavailable: Callable[[ToolRequest], Awaitable[None]] | None = None,
     ) -> None:
         self._resolve = tools if callable(tools) else tools.get
         self._middleware = tuple(middleware)
+        self._unavailable = unavailable
 
     async def dispatch(self, request: ToolRequest) -> ToolResult:
         tool = self._resolve(request.capability)
         if tool is None:
+            if self._unavailable is not None:
+                await self._unavailable(request)
             return ToolResult.rejected_result(
                 f"no tool registered for capability: {request.capability}"
             )

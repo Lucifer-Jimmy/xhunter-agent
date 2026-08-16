@@ -111,6 +111,7 @@ def build_local_runtime(
             "tool.completed",
             "tool.rejected",
             "tool.failed",
+            "tool.unavailable",
             "evidence.created",
             "task.completed",
             "task.failed",

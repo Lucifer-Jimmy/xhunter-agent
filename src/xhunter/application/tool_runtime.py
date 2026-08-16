@@ -1,7 +1,7 @@
 """Composition helper for the default W2 middleware order."""
 
 from xhunter.contracts.artifact import ArtifactStore
-from xhunter.contracts.event_bus import EventBus
+from xhunter.contracts.event_bus import Event, EventBus
 from xhunter.contracts.policy import PolicyEngine
 from xhunter.contracts.storage import EvidenceRepository
 from xhunter.orchestration.dispatcher import (
@@ -24,6 +24,18 @@ def build_tool_dispatcher(
     artifacts: ArtifactStore | None = None,
     redactor: Redactor | None = None,
 ) -> ToolDispatcher:
+    async def unavailable(request):
+        await event_bus.publish(
+            Event(
+                "tool.unavailable",
+                {
+                    "mission_id": request.mission_id,
+                    "task_id": request.task_id,
+                    "capability": request.capability,
+                },
+            )
+        )
+
     middleware = [
         AuditMiddleware(event_bus),
         budget.middleware,
@@ -43,4 +55,5 @@ def build_tool_dispatcher(
     return ToolDispatcher(
         registry.resolve,
         middleware,
+        unavailable,
     )

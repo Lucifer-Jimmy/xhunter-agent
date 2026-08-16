@@ -159,23 +159,14 @@ class MissionService:
                 await self._checkpoints.delete(checkpoint_key)
                 completed += int(verification.accepted)
                 failed += int(not verification.accepted)
-            except Exception as exc:
-                task.status = TaskStatus.TOOL_OUTCOME_UNKNOWN
-                await self._tasks.save(task)
-                await self._checkpoints.save(
-                    checkpoint_key,
-                    {
-                        "mission_id": str(mission_id),
-                        "task_id": str(task.id),
-                        "status": task.status.value,
-                        "error": str(exc),
-                    },
+            except asyncio.CancelledError:
+                await self._mark_unknown_outcome(
+                    mission_id, task, checkpoint_key, "CancelledError"
                 )
-                await self._events.publish(
-                    Event(
-                        "task.recovery_required",
-                        {"mission_id": str(mission_id), "task_id": str(task.id)},
-                    )
+                raise
+            except Exception as exc:
+                await self._mark_unknown_outcome(
+                    mission_id, task, checkpoint_key, type(exc).__name__
                 )
                 failed += 1
             finally:
@@ -200,6 +191,31 @@ class MissionService:
             )
         )
         return MissionRunResult(mission_id, completed, failed)
+
+    async def _mark_unknown_outcome(
+        self,
+        mission_id: MissionId,
+        task: Task,
+        checkpoint_key: str,
+        error_type: str,
+    ) -> None:
+        task.status = TaskStatus.TOOL_OUTCOME_UNKNOWN
+        await self._tasks.save(task)
+        await self._checkpoints.save(
+            checkpoint_key,
+            {
+                "mission_id": str(mission_id),
+                "task_id": str(task.id),
+                "status": task.status.value,
+                "error_type": error_type,
+            },
+        )
+        await self._events.publish(
+            Event(
+                "task.recovery_required",
+                {"mission_id": str(mission_id), "task_id": str(task.id)},
+            )
+        )
 
     async def _save_agent_evidence(
         self, mission: Mission, task: Task, content: str
