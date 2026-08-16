@@ -1,9 +1,11 @@
 """Build bounded Agent requests from inert Skills and registered capabilities."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from xhunter.contracts.agent_executor import AgentExecutionRequest
 from xhunter.contracts.model import Message
+from xhunter.kernel.entities import Mission, Task
 from xhunter.runtime.capability import CapabilityRegistry
 from xhunter.runtime.skill import SkillCatalog
 
@@ -47,4 +49,27 @@ class ContextService:
             messages=messages,
             tools=self._capabilities.specs(profile.required_capabilities),
             max_steps=profile.max_steps,
+        )
+
+
+class ProfileContextProvider:
+    def __init__(
+        self,
+        context_service: ContextService,
+        resolve_profile: Callable[[Task], AgentProfile],
+    ) -> None:
+        self._context_service = context_service
+        self._resolve_profile = resolve_profile
+
+    def build(
+        self,
+        mission: Mission,
+        task: Task,
+        messages: tuple[Message, ...] = (),
+    ) -> AgentExecutionRequest:
+        return self._context_service.build_agent_request(
+            str(mission.id),
+            str(task.id),
+            self._resolve_profile(task),
+            messages,
         )
