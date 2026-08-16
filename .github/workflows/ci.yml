@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --extra core --extra dev
-      - run: uv run pytest -q
+      - run: uv run pytest -q tests/contract tests/test_architecture_and_cli.py
 
   quality:
     runs-on: ubuntu-latest

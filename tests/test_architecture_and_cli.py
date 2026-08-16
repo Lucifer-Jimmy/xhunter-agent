@@ -1,3 +1,4 @@
+import ast
 import importlib
 import tempfile
 import unittest
@@ -5,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from xhunter.adapters.memory import FakeModelProvider
+from xhunter.application.architecture import check_architecture
 from xhunter.application.config import load_config
 from xhunter.application.run_agent import run_agent
 from xhunter.contracts.model import ModelResponse
@@ -43,6 +45,10 @@ class LocalAgentCommandTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ArchitectureBoundaryTests(unittest.TestCase):
+    def test_repository_dependency_graph_has_no_violations(self) -> None:
+        violations = check_architecture(Path("src/xhunter"))
+        self.assertEqual(violations, ())
+
     def test_public_packages_import(self) -> None:
         for package in (
             "xhunter.kernel",
@@ -85,6 +91,19 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                 self._assert_no_import(path, forbidden)
 
     def _assert_no_import(self, path: Path, forbidden: set[str]) -> None:
-        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module is not None:
+                imported.add(node.module)
         for name in forbidden:
-            self.assertNotRegex(source, rf"(?m)^\s*(?:from|import)\s+{name}(?:\.|\s|$)")
+            violates = any(
+                module == name or module.startswith(f"{name}.")
+                for module in imported
+            )
+            self.assertFalse(
+                violates,
+                f"{path} imports forbidden module {name}",
+            )
