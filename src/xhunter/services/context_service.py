@@ -16,6 +16,7 @@ class AgentProfile:
     skill_ids: tuple[str, ...] = ()
     required_capabilities: tuple[str, ...] = ()
     max_steps: int = 8
+    timeout_seconds: float = 900.0
 
 
 class ContextService:
@@ -49,6 +50,7 @@ class ContextService:
             messages=messages,
             tools=self._capabilities.specs(profile.required_capabilities),
             max_steps=profile.max_steps,
+            timeout_seconds=profile.timeout_seconds,
         )
 
 

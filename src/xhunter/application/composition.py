@@ -94,6 +94,7 @@ def build_local_runtime(
         "task.failed",
         "model.called",
         "model.completed",
+        "model.failed",
         )
     ]
 

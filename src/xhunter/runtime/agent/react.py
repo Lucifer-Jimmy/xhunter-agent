@@ -1,5 +1,7 @@
 """Small, framework-free ReAct loop for the first vertical slice."""
 
+import asyncio
+
 from xhunter.contracts.agent_executor import AgentExecutionRequest, AgentExecutionResult
 from xhunter.contracts.model import Message, ModelProvider, ModelRequest
 from xhunter.contracts.tool import ToolRequest
@@ -12,6 +14,17 @@ class ReActAgentExecutor:
         self._dispatcher = dispatcher
 
     async def execute(self, request: AgentExecutionRequest) -> AgentExecutionResult:
+        if request.timeout_seconds <= 0:
+            raise ValueError("agent timeout must be positive")
+        try:
+            async with asyncio.timeout(request.timeout_seconds):
+                return await self._execute_loop(request)
+        except TimeoutError as exc:
+            raise AgentExecutionTimeout("agent wall-clock budget exhausted") from exc
+
+    async def _execute_loop(
+        self, request: AgentExecutionRequest
+    ) -> AgentExecutionResult:
         messages = list(request.messages)
         tool_results = []
 
@@ -49,3 +62,7 @@ class ReActAgentExecutor:
         return AgentExecutionResult(
             "agent step budget exhausted", request.max_steps, tuple(tool_results)
         )
+
+
+class AgentExecutionTimeout(RuntimeError):
+    pass

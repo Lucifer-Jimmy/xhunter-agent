@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from collections.abc import Mapping
 
@@ -151,3 +152,48 @@ class ModelBudgetTests(unittest.IsolatedAsyncioTestCase):
         )
         with self.assertRaises(ModelBudgetExceeded):
             await budgeted.generate(ModelRequest())
+
+    async def test_concurrent_calls_do_not_oversell_token_budget(self) -> None:
+        provider = FakeModelProvider(
+            [
+                ModelResponse(content="one", usage=Usage(5, 5)),
+                ModelResponse(content="must not run"),
+            ]
+        )
+        budgeted = BudgetedModelProvider(
+            provider,
+            ModelBudgetLimits(10, 10, 10, 10),
+            InProcessEventBus(),
+        )
+        results = await asyncio.gather(
+            budgeted.generate(ModelRequest(mission_id="m1", task_id="t1")),
+            budgeted.generate(ModelRequest(mission_id="m1", task_id="t1")),
+            return_exceptions=True,
+        )
+        self.assertIsInstance(results[1], ModelBudgetExceeded)
+        self.assertEqual(len(provider.requests), 1)
+
+    async def test_model_failure_emits_only_error_type(self) -> None:
+        class FailingProvider:
+            async def generate(self, request: ModelRequest) -> ModelResponse:
+                del request
+                raise RuntimeError("secret failure detail")
+
+        events: list[Event] = []
+        bus = InProcessEventBus()
+
+        async def capture(event: Event) -> None:
+            events.append(event)
+
+        bus.subscribe("model.failed", capture)
+        budgeted = BudgetedModelProvider(
+            FailingProvider(),
+            ModelBudgetLimits(100, 100, 10, 10),
+            bus,
+        )
+        with self.assertRaises(RuntimeError):
+            await budgeted.generate(ModelRequest(mission_id="m1", task_id="t1"))
+        payload = events[0].payload
+        assert isinstance(payload, dict)
+        self.assertEqual(payload["error_type"], "RuntimeError")
+        self.assertNotIn("secret failure detail", repr(payload))

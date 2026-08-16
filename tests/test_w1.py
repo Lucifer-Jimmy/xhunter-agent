@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from xhunter.adapters.memory import (
@@ -10,13 +11,13 @@ from xhunter.adapters.memory import (
 )
 from xhunter.contracts.agent_executor import AgentExecutionRequest
 from xhunter.contracts.event_bus import Event
-from xhunter.contracts.model import ModelResponse, ToolCall
+from xhunter.contracts.model import ModelRequest, ModelResponse, ToolCall
 from xhunter.contracts.sandbox import SandboxRequest, SandboxResult
 from xhunter.contracts.tool import ToolRequest, ToolResult
 from xhunter.kernel.entities import Task, TaskStatus
 from xhunter.kernel.types import MissionId, TaskId
 from xhunter.orchestration.dispatcher import ToolDispatcher
-from xhunter.runtime.agent import ReActAgentExecutor
+from xhunter.runtime.agent import AgentExecutionTimeout, ReActAgentExecutor
 
 
 class W1Tests(unittest.IsolatedAsyncioTestCase):
@@ -98,3 +99,22 @@ class W1Tests(unittest.IsolatedAsyncioTestCase):
         ).dispatch(ToolRequest("test.echo", {"value": "blocked"}))
         self.assertTrue(result.rejected)
         self.assertFalse(called)
+
+    async def test_agent_wall_clock_timeout_cancels_slow_model(self) -> None:
+        cancelled = False
+
+        class SlowModel:
+            async def generate(self, request: ModelRequest) -> ModelResponse:
+                del request
+                nonlocal cancelled
+                try:
+                    await asyncio.sleep(1)
+                except asyncio.CancelledError:
+                    cancelled = True
+                    raise
+                return ModelResponse(content="unexpected")
+
+        agent = ReActAgentExecutor(SlowModel(), ToolDispatcher({}))
+        with self.assertRaises(AgentExecutionTimeout):
+            await agent.execute(AgentExecutionRequest(timeout_seconds=0.01))
+        self.assertTrue(cancelled)

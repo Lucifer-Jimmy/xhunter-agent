@@ -15,6 +15,7 @@ class AgentExecutionRequest:
     messages: tuple[Message, ...] = ()
     tools: tuple[ToolSpec, ...] = ()
     max_steps: int = 8
+    timeout_seconds: float = 900.0
 
 
 @dataclass(frozen=True, slots=True)

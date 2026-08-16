@@ -44,32 +44,47 @@ class BudgetedModelProvider:
         self._mission_usage: dict[str, _UsageTotal] = {}
         self._task_usage: dict[tuple[str, str], _UsageTotal] = {}
         self._lock = asyncio.Lock()
+        self._call_lock = asyncio.Lock()
 
     async def generate(self, request: ModelRequest) -> ModelResponse:
         if not request.mission_id or not request.task_id:
             raise ModelBudgetExceeded("model budget requires mission_id and task_id")
-        await self._assert_available(request)
-        await self._events.publish(
-            Event(
-                "model.called",
-                {"mission_id": request.mission_id, "task_id": request.task_id},
+        async with self._call_lock:
+            await self._assert_available(request)
+            await self._events.publish(
+                Event(
+                    "model.called",
+                    {"mission_id": request.mission_id, "task_id": request.task_id},
+                )
             )
-        )
-        response = await self._provider.generate(request)
-        await self._record(request, response.usage)
-        await self._events.publish(
-            Event(
-                "model.completed",
-                {
-                    "mission_id": request.mission_id,
-                    "task_id": request.task_id,
-                    "input_tokens": response.usage.input_tokens,
-                    "output_tokens": response.usage.output_tokens,
-                    "cost": response.usage.cost,
-                },
+            try:
+                response = await self._provider.generate(request)
+            except Exception as exc:
+                await self._events.publish(
+                    Event(
+                        "model.failed",
+                        {
+                            "mission_id": request.mission_id,
+                            "task_id": request.task_id,
+                            "error_type": type(exc).__name__,
+                        },
+                    )
+                )
+                raise
+            await self._record(request, response.usage)
+            await self._events.publish(
+                Event(
+                    "model.completed",
+                    {
+                        "mission_id": request.mission_id,
+                        "task_id": request.task_id,
+                        "input_tokens": response.usage.input_tokens,
+                        "output_tokens": response.usage.output_tokens,
+                        "cost": response.usage.cost,
+                    },
+                )
             )
-        )
-        return response
+            return response
 
     async def _assert_available(self, request: ModelRequest) -> None:
         async with self._lock:
