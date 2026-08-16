@@ -9,7 +9,7 @@ from xhunter.adapters.memory import FakeModelProvider
 from xhunter.application.bootstrap import UnsafeLocalSandboxError
 from xhunter.application.cli.main import main
 from xhunter.application.composition import build_local_runtime
-from xhunter.application.config import load_config
+from xhunter.application.config import load_config, validate_config
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -38,6 +38,20 @@ class ConfigurationTests(unittest.TestCase):
             exit_code = main(["doctor"])
         self.assertEqual(exit_code, 0)
         self.assertIn('"local_sandbox_unsafe": true', output.getvalue())
+
+    def test_validation_rejects_unknown_provider_and_invalid_budget(self) -> None:
+        with self.assertRaisesRegex(ValueError, "sandbox provider"):
+            validate_config(
+                replace(load_config(environment={}), sandbox_provider="bad")
+            )
+        invalid_budget = replace(
+            load_config(environment={}).budget,
+            task_tool_calls=-1,
+        )
+        with self.assertRaisesRegex(ValueError, "budget limits"):
+            validate_config(
+                replace(load_config(environment={}), budget=invalid_budget)
+            )
 
 
 class CompositionTests(unittest.IsolatedAsyncioTestCase):

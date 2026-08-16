@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-from xhunter.application.config import load_config
+from xhunter.application.config import load_config, validate_config
 from xhunter.application.models import build_model_provider
 from xhunter.application.recovery_commands import (
     get_mission_status,
@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
     config = load_config(arguments.config)
+    validate_config(config)
     if arguments.command == "doctor":
         print(
             json.dumps(

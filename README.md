@@ -3,9 +3,10 @@
 `xhunter-agent` is a modular, auditable security agent platform for authorized
 research and CTF environments.
 
-The current implementation starts with the dependency-free W1 kernel,
-contracts, and in-memory adapters. Production execution will use a Docker/OCI
-sandbox; `LocalSandbox` is reserved for tests.
+The current local MVP includes the ReAct runtime, deterministic middleware
+gates, Skills, Tool Plugin API v1, sandbox-backed MCP, five built-in Tools, a
+CTF Domain Pack, persistent local repositories, audit tracing, budgets, leases,
+checkpoint recovery, and Docker/OCI plus unsafe-local Sandbox adapters.
 
 ## Local development
 
@@ -18,8 +19,9 @@ XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX=1
 ```
 
 Do not use that setting for untrusted challenge files or production missions.
-The future production adapter will target the broadly supported Docker/OCI API
-and remain replaceable through the `Sandbox` contract.
+For isolated execution, configure `sandbox.provider = "docker"`; the adapter
+uses the broadly supported Docker/OCI CLI contract and supports remote
+`DOCKER_HOST` through configuration.
 
 Validate configuration with:
 
@@ -84,8 +86,20 @@ already have produced a side effect.
 
 `McpServerManager` discovers MCP Tool schemas, maps them to
 `mcp.<server>.<tool>` capabilities, and unregisters them during teardown. The
-current repository includes a Fake transport for contract tests. A real stdio
-transport must run through the Sandbox supervisor; xhunter intentionally does
-not spawn MCP server processes directly on the Host.
+repository includes Fake and Sandbox stdio transports. The Sandbox transport
+starts the MCP server inside the configured execution plane; xhunter does not
+spawn MCP server processes directly on the Host.
+
+## Current boundaries
+
+- Local mode is intentionally unsafe and requires an explicit environment flag.
+- Docker command construction is contract-tested, but a live engine/network
+  integration run still requires an available Docker host and xhunter image.
+- PostgreSQL/UoW and the long-lived supervisor transport remain the next
+  production-scale adapters; the local MVP uses atomic JSON repositories and a
+  per-request sandbox MCP bridge.
+- A real DeepSeek/OpenAI-compatible run requires `XHUNTER_MODEL_API_KEY` and
+  endpoint access. Tests use deterministic fake transports and do not call a
+  model service.
 
 See `examples/skills/ctf-web-enumeration/` and `examples/plugin-echo/`.

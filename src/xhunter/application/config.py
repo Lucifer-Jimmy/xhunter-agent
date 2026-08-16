@@ -190,6 +190,47 @@ def load_config(
     )
 
 
+def validate_config(config: AppConfig) -> None:
+    if config.sandbox_provider not in {"local", "docker"}:
+        raise ValueError(f"unsupported sandbox provider: {config.sandbox_provider}")
+    if config.artifacts_provider not in {"local", "memory"}:
+        raise ValueError(f"unsupported artifacts provider: {config.artifacts_provider}")
+    if config.checkpoint_provider not in {"file", "memory"}:
+        raise ValueError(
+            f"unsupported checkpoint provider: {config.checkpoint_provider}"
+        )
+    if config.storage_provider not in {"file", "memory"}:
+        raise ValueError(f"unsupported storage provider: {config.storage_provider}")
+    if config.model.provider not in {"deepseek", "openai-compatible"}:
+        raise ValueError(f"unsupported model provider: {config.model.provider}")
+    if config.sandbox_provider == "docker" and not config.sandbox_image:
+        raise ValueError("Docker sandbox image must not be empty")
+    if min(
+        config.budget.mission_tool_calls,
+        config.budget.task_tool_calls,
+        config.budget.mission_model_tokens,
+        config.budget.task_model_tokens,
+    ) < 0:
+        raise ValueError("budget limits must not be negative")
+    if config.budget.wall_clock_seconds <= 0:
+        raise ValueError("wall-clock budget must be positive")
+    if min(
+        config.budget.mission_model_cost,
+        config.budget.task_model_cost,
+    ) < 0:
+        raise ValueError("model cost budgets must not be negative")
+    if config.model.timeout_seconds <= 0:
+        raise ValueError("model timeout must be positive")
+    for name, path in (
+        ("trace", config.trace_path),
+        ("artifacts", config.artifacts_path),
+        ("checkpoint", config.checkpoint_path),
+        ("storage", config.storage_path),
+    ):
+        if not str(path):
+            raise ValueError(f"{name} path must not be empty")
+
+
 def _section(document: dict[str, object], name: str) -> dict[str, object]:
     value = document.get(name, {})
     if not isinstance(value, dict):
