@@ -1,6 +1,11 @@
 [sandbox]
 provider = "local"
 
+[model]
+provider = "deepseek"
+base_url = "https://api.deepseek.com/v1"
+model = "deepseek-v4-pro"
+
 [policy]
 allowed_targets = ["challenge.local", "10.10.0.0/16"]
 blocked_targets = ["platform.local"]

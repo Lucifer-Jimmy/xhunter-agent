@@ -15,11 +15,21 @@ class BudgetConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ModelConfig:
+    provider: str = "deepseek"
+    base_url: str = "https://api.deepseek.com/v1"
+    model: str = "deepseek-v4-pro"
+    api_key: str = ""
+    timeout_seconds: float = 120.0
+
+
+@dataclass(frozen=True, slots=True)
 class AppConfig:
     sandbox_provider: str = "local"
     allowed_targets: tuple[str, ...] = ()
     blocked_targets: tuple[str, ...] = ()
     budget: BudgetConfig = field(default_factory=BudgetConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
     trace_path: Path = Path(".xhunter/session.jsonl")
 
 
@@ -37,6 +47,7 @@ def load_config(
     policy = _section(document, "policy")
     budget = _section(document, "budget")
     tracing = _section(document, "tracing")
+    model = _section(document, "model")
     return AppConfig(
         sandbox_provider=values.get(
             "XHUNTER_SANDBOX_PROVIDER", _string(sandbox, "provider", "local")
@@ -66,6 +77,24 @@ def load_config(
                 values,
                 "XHUNTER_WALL_CLOCK_SECONDS",
                 _number(budget, "wall_clock_seconds", 3600.0),
+            ),
+        ),
+        model=ModelConfig(
+            provider=values.get(
+                "XHUNTER_MODEL_PROVIDER", _string(model, "provider", "deepseek")
+            ),
+            base_url=values.get(
+                "XHUNTER_MODEL_BASE_URL",
+                _string(model, "base_url", "https://api.deepseek.com/v1"),
+            ),
+            model=values.get(
+                "XHUNTER_MODEL", _string(model, "model", "deepseek-v4-pro")
+            ),
+            api_key=values.get("XHUNTER_MODEL_API_KEY", ""),
+            timeout_seconds=_environment_float(
+                values,
+                "XHUNTER_MODEL_TIMEOUT_SECONDS",
+                _number(model, "timeout_seconds", 120.0),
             ),
         ),
         trace_path=Path(
