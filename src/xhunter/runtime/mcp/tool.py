@@ -1,7 +1,7 @@
 """Adapt an MCP server tool to xhunter's Tool contract."""
 
 from xhunter.contracts.mcp import McpServerSpec, McpToolSpec, McpTransport
-from xhunter.contracts.tool import ToolRequest, ToolResult
+from xhunter.contracts.tool import ToolRequest, ToolResult, ToolSpec
 
 
 class McpTool:
@@ -17,6 +17,11 @@ class McpTool:
         self._spec = spec
         self._transport = transport
         self.capability = spec.capability
+        self.spec = ToolSpec(
+            capability=self.capability,
+            description=spec.description or f"MCP tool {spec.name}",
+            input_schema=spec.input_schema or {"type": "object"},
+        )
 
     async def execute(self, request: ToolRequest) -> ToolResult:
         result = await self._transport.call_tool(

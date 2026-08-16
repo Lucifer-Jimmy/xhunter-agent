@@ -48,9 +48,13 @@ class PluginExtensionTests(unittest.TestCase):
         self.assertIsNone(manager.start(CoreToolsPlugin(FakeSandbox())))
         self.assertIsNotNone(registry.resolve("system.shell"))
         self.assertIsNotNone(registry.resolve("code.python"))
+        self.assertIsNotNone(registry.resolve("network.http"))
+        self.assertIsNotNone(registry.resolve("filesystem.workspace"))
         manager.stop_all()
         self.assertIsNone(registry.resolve("system.shell"))
         self.assertIsNone(registry.resolve("code.python"))
+        self.assertIsNone(registry.resolve("network.http"))
+        self.assertIsNone(registry.resolve("filesystem.workspace"))
 
     def test_optional_plugin_failure_does_not_break_startup(self) -> None:
         class FailingPlugin:

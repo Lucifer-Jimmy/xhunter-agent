@@ -20,6 +20,7 @@ class ReActAgentExecutor:
                 ModelRequest(
                     system_prompt=request.system_prompt,
                     messages=tuple(messages),
+                    tools=request.tools,
                 )
             )
             if not response.tool_calls:

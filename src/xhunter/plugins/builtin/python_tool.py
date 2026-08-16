@@ -3,11 +3,24 @@
 import sys
 
 from xhunter.contracts.sandbox import Sandbox, SandboxRequest
-from xhunter.contracts.tool import ToolRequest, ToolResult
+from xhunter.contracts.tool import ToolRequest, ToolResult, ToolSpec
 
 
 class PythonTool:
     capability = "code.python"
+    spec = ToolSpec(
+        capability=capability,
+        description="Execute Python source code in the mission sandbox.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string"},
+                "timeout_seconds": {"type": "number"},
+                "working_directory": {"type": "string"},
+            },
+            "required": ["code"],
+        },
+    )
 
     def __init__(self, sandbox: Sandbox, executable: str | None = None) -> None:
         self._sandbox = sandbox

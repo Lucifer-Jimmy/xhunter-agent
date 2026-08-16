@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from xhunter.contracts.tool import ToolSpec
+
 
 @dataclass(frozen=True, slots=True)
 class Message:
@@ -28,7 +30,7 @@ class Usage:
 class ModelRequest:
     messages: tuple[Message, ...] = ()
     system_prompt: str = ""
-    tools: tuple[dict[str, object], ...] = ()
+    tools: tuple[ToolSpec, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

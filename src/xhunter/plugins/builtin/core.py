@@ -4,6 +4,8 @@ from collections.abc import Callable
 
 from xhunter.contracts.plugin import PluginContext, PluginManifest
 from xhunter.contracts.sandbox import Sandbox
+from xhunter.plugins.builtin.filesystem import FilesystemTool
+from xhunter.plugins.builtin.http import HttpTool
 from xhunter.plugins.builtin.python_tool import PythonTool
 from xhunter.plugins.builtin.shell import ShellTool
 
@@ -22,6 +24,8 @@ class CoreToolsPlugin:
         disposers = [
             context.register_tool(ShellTool(self._sandbox)),
             context.register_tool(PythonTool(self._sandbox)),
+            context.register_tool(HttpTool(self._sandbox)),
+            context.register_tool(FilesystemTool(self._sandbox)),
         ]
 
         def dispose() -> None:

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from xhunter.contracts.model import Message
-from xhunter.contracts.tool import ToolResult
+from xhunter.contracts.tool import ToolResult, ToolSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +13,7 @@ class AgentExecutionRequest:
     task_id: str = ""
     system_prompt: str = ""
     messages: tuple[Message, ...] = ()
+    tools: tuple[ToolSpec, ...] = ()
     max_steps: int = 8
 
 

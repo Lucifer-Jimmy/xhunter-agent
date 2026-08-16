@@ -3,11 +3,24 @@
 from collections.abc import Sequence
 
 from xhunter.contracts.sandbox import Sandbox, SandboxRequest
-from xhunter.contracts.tool import ToolRequest, ToolResult
+from xhunter.contracts.tool import ToolRequest, ToolResult, ToolSpec
 
 
 class ShellTool:
     capability = "system.shell"
+    spec = ToolSpec(
+        capability=capability,
+        description="Execute an argument-vector command in the mission sandbox.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "command": {"type": "array", "items": {"type": "string"}},
+                "timeout_seconds": {"type": "number"},
+                "working_directory": {"type": "string"},
+            },
+            "required": ["command"],
+        },
+    )
 
     def __init__(self, sandbox: Sandbox) -> None:
         self._sandbox = sandbox

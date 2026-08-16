@@ -14,7 +14,7 @@ from xhunter.contracts.storage import (
     MissionRepository,
     TaskRepository,
 )
-from xhunter.contracts.tool import ToolRequest, ToolResult
+from xhunter.contracts.tool import ToolRequest, ToolResult, ToolSpec
 from xhunter.kernel.entities import Evidence, Mission, Task, TaskStatus
 from xhunter.kernel.types import MissionId, TaskId
 
@@ -124,6 +124,14 @@ class FakeSandbox(Sandbox):
 
 class EchoTool:
     capability = "test.echo"
+    spec = ToolSpec(
+        capability=capability,
+        description="Echo a value through the configured sandbox.",
+        input_schema={
+            "type": "object",
+            "properties": {"value": {"type": "string"}},
+        },
+    )
 
     def __init__(self, sandbox: Sandbox) -> None:
         self._sandbox = sandbox
