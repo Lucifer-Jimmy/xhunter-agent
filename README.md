@@ -51,8 +51,14 @@ Evidence, and Checkpoint layers:
 uv run xhunter --config examples/xhunter.toml run-ctf \
   --name "Authorized Web Challenge" \
   --category web \
-  --target challenge.local
+  --target challenge.local \
+  --description "目标是一个登录系统。分析认证流程和输入点，找到并返回 flag。"
 ```
+
+For a longer challenge statement, use
+`--description-file /path/to/challenge.md` instead of placing the full natural
+language description on the command line. Target, category, and flag pattern
+remain deterministic security constraints rather than model-inferred values.
 
 The target must be declared both by the CTF challenge and in the configured
 `policy.allowed_targets`; challenge input never expands the policy whitelist.

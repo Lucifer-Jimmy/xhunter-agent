@@ -21,11 +21,14 @@ class CtfChallenge:
     name: str
     category: str
     targets: tuple[str, ...]
+    description: str
     flag_pattern: str = r"(?:flag|ctf)\{[^}\r\n]+\}"
 
     def validate(self) -> None:
-        if not self.name or not self.category:
-            raise ValueError("CTF challenge name and category must not be empty")
+        if not self.name or not self.category or not self.description.strip():
+            raise ValueError(
+                "CTF challenge name, category, and description must not be empty"
+            )
         if not self.targets:
             raise ValueError("CTF challenge must declare at least one target")
         re.compile(self.flag_pattern)
@@ -51,7 +54,8 @@ class CtfDomain:
             mission_id,
             (
                 f"Solve the authorized {challenge.category} CTF challenge: "
-                f"{challenge.name}"
+                f"{challenge.name}\n\nChallenge description:\n"
+                f"{challenge.description.strip()}"
             ),
             required_capabilities=capabilities,
             priority=100,

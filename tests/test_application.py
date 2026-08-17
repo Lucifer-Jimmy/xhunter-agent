@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from xhunter.adapters.memory import FakeModelProvider
 from xhunter.application.bootstrap import UnsafeLocalSandboxError
@@ -52,6 +53,59 @@ class ConfigurationTests(unittest.TestCase):
             validate_config(
                 replace(load_config(environment={}), budget=invalid_budget)
             )
+
+    def test_run_ctf_requires_natural_language_description(self) -> None:
+        with self.assertRaises(SystemExit):
+            main(
+                [
+                    "run-ctf",
+                    "--name",
+                    "challenge",
+                    "--category",
+                    "web",
+                    "--target",
+                    "challenge.local",
+                ]
+            )
+
+    def test_run_ctf_reads_description_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            description = Path(temporary_directory) / "challenge.md"
+            description.write_text("分析登录逻辑并寻找 flag。", encoding="utf-8")
+            run = AsyncMock()
+            run.return_value = type(
+                "Result",
+                (),
+                {
+                    "mission_id": "m1",
+                    "status": type("Status", (), {"value": "completed"})(),
+                    "completed_tasks": 1,
+                    "failed_tasks": 0,
+                },
+            )()
+            with patch(
+                "xhunter.application.cli.main.build_model_provider",
+                return_value=object(),
+            ), patch("xhunter.application.cli.main.run_ctf", run):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    main(
+                        [
+                            "run-ctf",
+                            "--name",
+                            "challenge",
+                            "--category",
+                            "web",
+                            "--target",
+                            "challenge.local",
+                            "--description-file",
+                            str(description),
+                        ]
+                    )
+            await_args = run.await_args
+            self.assertIsNotNone(await_args)
+            assert await_args is not None
+            challenge = await_args.args[3]
+            self.assertEqual(challenge.description, "分析登录逻辑并寻找 flag。")
 
 
 class CompositionTests(unittest.IsolatedAsyncioTestCase):

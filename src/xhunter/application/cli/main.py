@@ -38,6 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     ctf_parser.add_argument("--name", required=True)
     ctf_parser.add_argument("--category", required=True)
     ctf_parser.add_argument("--target", action="append", required=True)
+    description_group = ctf_parser.add_mutually_exclusive_group(required=True)
+    description_group.add_argument("--description")
+    description_group.add_argument("--description-file", type=Path)
     ctf_parser.add_argument("--flag-pattern", default=r"(?:flag|ctf)\{[^}\r\n]+\}")
     status_parser = subparsers.add_parser(
         "status", help="show persisted Mission and Task status"
@@ -89,18 +92,21 @@ def main(argv: list[str] | None = None) -> int:
         print(result)
         return 0
     if arguments.command == "run-ctf":
+        challenge = CtfChallenge(
+            name=arguments.name,
+            category=arguments.category,
+            targets=tuple(arguments.target),
+            description=_challenge_description(arguments),
+            flag_pattern=arguments.flag_pattern,
+        )
+        challenge.validate()
         model = build_model_provider(config.model)
         result = asyncio.run(
             run_ctf(
                 config,
                 model,
                 os.environ,
-                CtfChallenge(
-                    arguments.name,
-                    arguments.category,
-                    tuple(arguments.target),
-                    arguments.flag_pattern,
-                ),
+                challenge,
             )
         )
         print(
@@ -172,6 +178,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     return 2
+
+
+def _challenge_description(arguments: argparse.Namespace) -> str:
+    if arguments.description is not None:
+        return arguments.description
+    path = arguments.description_file
+    if path is None:
+        raise ValueError("challenge description is required")
+    description = path.read_text(encoding="utf-8")
+    if not description.strip():
+        raise ValueError("challenge description file must not be empty")
+    return description
 
 
 if __name__ == "__main__":

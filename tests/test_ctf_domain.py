@@ -28,7 +28,12 @@ from xhunter.services import ContextService
 class CtfDomainTests(unittest.IsolatedAsyncioTestCase):
     def test_web_challenge_creates_scoped_mission_task_and_profile(self) -> None:
         state = CtfDomain().create_initial_state(
-            CtfChallenge("Login Lab", "web", ("challenge.local",))
+            CtfChallenge(
+                "Login Lab",
+                "web",
+                ("challenge.local",),
+                "登录页面存在未知漏洞，请找到 flag。",
+            )
         )
         self.assertEqual(state.mission.scope, ("challenge.local",))
         self.assertEqual(state.task.mission_id, state.mission.id)
@@ -37,6 +42,7 @@ class CtfDomainTests(unittest.IsolatedAsyncioTestCase):
             state.task.required_capabilities,
             state.profile.required_capabilities,
         )
+        self.assertIn("登录页面存在未知漏洞", state.task.objective)
 
     async def test_flag_verifier_accepts_matching_candidate(self) -> None:
         verifier = CtfFlagVerifier(r"flag\{[a-z0-9_-]+\}")
@@ -60,7 +66,12 @@ class CtfDomainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_ctf_profile_runs_through_shared_agent_runtime(self) -> None:
         state = CtfDomain().create_initial_state(
-            CtfChallenge("Echo Lab", "misc", ("challenge.local",))
+            CtfChallenge(
+                "Echo Lab",
+                "misc",
+                ("challenge.local",),
+                "分析 Echo 服务并取得 flag。",
+            )
         )
         registry = CapabilityRegistry()
         registry.register(

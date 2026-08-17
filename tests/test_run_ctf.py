@@ -31,6 +31,7 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
                     "Local Web",
                     "web",
                     ("challenge.local",),
+                    "检查授权 Web 目标并寻找 flag。",
                     r"flag\{[a-z]+\}",
                 ),
             )
@@ -54,7 +55,12 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
                 config,
                 FakeModelProvider([ModelResponse(content="no candidate")]),
                 {"XHUNTER_ALLOW_UNSAFE_LOCAL_SANDBOX": "1"},
-                CtfChallenge("Local Misc", "misc", ("local",)),
+                CtfChallenge(
+                    "Local Misc",
+                    "misc",
+                    ("local",),
+                    "分析本地 Misc 题并寻找 flag。",
+                ),
             )
         self.assertEqual(result.status, MissionStatus.FAILED)
         self.assertEqual(result.failed_tasks, 1)
@@ -77,6 +83,7 @@ class RunCtfTests(unittest.IsolatedAsyncioTestCase):
                     "Custom Flag",
                     "misc",
                     ("local",),
+                    "寻找自定义格式的 flag。",
                     r"XH\{[^}\r\n]+\}",
                 ),
             )
