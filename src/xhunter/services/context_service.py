@@ -69,9 +69,18 @@ class ProfileContextProvider:
         task: Task,
         messages: tuple[Message, ...] = (),
     ) -> AgentExecutionRequest:
+        mission_message = Message(
+            "user",
+            (
+                f"Task objective: {task.objective}\n"
+                f"Authorized targets: {', '.join(mission.scope)}\n"
+                "Operate only on these targets. Do not inspect the Host repository, "
+                "configuration, credentials, or unrelated local files."
+            ),
+        )
         return self._context_service.build_agent_request(
             str(mission.id),
             str(task.id),
             self._resolve_profile(task),
-            messages,
+            (mission_message, *messages),
         )

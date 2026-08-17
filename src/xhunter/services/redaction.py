@@ -7,7 +7,8 @@ from hashlib import sha256
 _DEFAULT_PATTERNS = (
     re.compile(r"(?i)\b(flag|ctf)\{[^}\r\n]{1,512}\}"),
     re.compile(
-        r"(?i)\b(api[_-]?key|token|password|secret)\s*[:=]\s*"
+        r"(?i)\b(?:[a-z0-9]+[_-])*"
+        r"(api[_-]?key|token|password|secret)\s*[:=]\s*"
         r"([\"']?)[^\s,;\"']{4,}\2"
     ),
 )

@@ -32,12 +32,14 @@ from xhunter.services import RecoveryDecision, RecoveryService, Redactor
 class RedactionTests(unittest.TestCase):
     def test_redacts_flags_and_credentials_to_hash_references(self) -> None:
         result = Redactor().redact(
-            "found flag{super-secret} token=abcdef123456 password: hunter22"
+            "found flag{super-secret} token=abcdef123456 password: hunter22 "
+            "XHUNTER_MODEL_API_KEY=sk-sensitive-value"
         )
         self.assertNotIn("super-secret", result.text)
         self.assertNotIn("abcdef123456", result.text)
         self.assertNotIn("hunter22", result.text)
-        self.assertEqual(len(result.references), 3)
+        self.assertNotIn("sk-sensitive-value", result.text)
+        self.assertEqual(len(result.references), 4)
         self.assertTrue(all(item.startswith("sha256:") for item in result.references))
 
 

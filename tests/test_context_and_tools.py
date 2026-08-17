@@ -77,6 +77,25 @@ class ContextServiceTests(unittest.IsolatedAsyncioTestCase):
                 AgentProfile("analyst", required_capabilities=("network.http",)),
             )
 
+    def test_profile_context_injects_objective_and_scope(self) -> None:
+        from xhunter.kernel.entities import Mission, Task
+        from xhunter.kernel.types import MissionId, TaskId
+        from xhunter.services import ProfileContextProvider
+
+        provider = ProfileContextProvider(
+            ContextService(SkillCatalog(), CapabilityRegistry()),
+            lambda _task: AgentProfile("analyst"),
+        )
+        request = provider.build(
+            Mission(MissionId("m1"), "challenge", ("web.challenge.ctf.show",)),
+            Task(TaskId("t1"), MissionId("m1"), "Find the flag"),
+        )
+        self.assertIn("Find the flag", request.messages[0].content or "")
+        self.assertIn(
+            "web.challenge.ctf.show", request.messages[0].content or ""
+        )
+        self.assertIn("Do not inspect the Host", request.messages[0].content or "")
+
 
 class SandboxBackedToolTests(unittest.IsolatedAsyncioTestCase):
     async def test_http_tool_builds_curl_request_and_sends_body_on_stdin(self) -> None:

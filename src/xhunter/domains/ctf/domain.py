@@ -59,7 +59,9 @@ class CtfDomain:
         profile = AgentProfile(
             role=(
                 "You are solving an authorized CTF challenge. Preserve evidence, "
-                "stay within target scope, and return the flag candidate."
+                "stay within target scope, and return the flag candidate. Use HTTP "
+                "or Browser tools for the declared target. Do not enumerate the Host "
+                "repository, configuration, credentials, or unrelated local files."
             ),
             required_capabilities=capabilities,
             max_steps=30,
