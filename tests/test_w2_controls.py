@@ -130,6 +130,37 @@ class ScopePolicyTests(unittest.IsolatedAsyncioTestCase):
         decision = await self.policy.authorize(ToolRequest("code.python", {}))
         self.assertTrue(decision.allowed)
 
+    async def test_wildcard_allows_only_real_subdomains(self) -> None:
+        policy = ScopePolicy(
+            ScopePolicyConfig(
+                ("challenge.ctf.show", "*.challenge.ctf.show")
+            )
+        )
+        root = await policy.authorize(
+            ToolRequest("network.http", {"url": "https://challenge.ctf.show"})
+        )
+        child = await policy.authorize(
+            ToolRequest(
+                "network.http", {"url": "https://web.challenge.ctf.show"}
+            )
+        )
+        lookalike = await policy.authorize(
+            ToolRequest(
+                "network.http", {"url": "https://evilchallenge.ctf.show"}
+            )
+        )
+        parent = await policy.authorize(
+            ToolRequest("network.http", {"url": "https://ctf.show"})
+        )
+        self.assertTrue(root.allowed)
+        self.assertTrue(child.allowed)
+        self.assertFalse(lookalike.allowed)
+        self.assertFalse(parent.allowed)
+
+    def test_invalid_wildcard_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            ScopePolicy(ScopePolicyConfig(("web.*.ctf.show",)))
+
 
 class DefaultMiddlewareChainTests(unittest.IsolatedAsyncioTestCase):
     async def test_policy_denial_short_circuits_tool_and_is_audited(self) -> None:
